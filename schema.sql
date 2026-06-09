@@ -15,12 +15,33 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Enable Row Level Security (RLS) but allow anonymous reads/writes for testing convenience
+-- Helper functions to check roles securely and prevent recursion loops
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'ADMIN'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.is_leadership()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role IN ('ADMIN', 'VOLUNTEER', 'CORE_MEMBER')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.profiles FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.profiles FOR DELETE USING (true);
+CREATE POLICY "Allow authenticated read" ON public.profiles FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow public signup insert" ON public.profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow owner or admin update" ON public.profiles FOR UPDATE USING (auth.uid() = id OR public.is_admin());
+CREATE POLICY "Allow owner or admin delete" ON public.profiles FOR DELETE USING (auth.uid() = id OR public.is_admin());
 
 -- 2. ANNOUNCEMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.announcements (
@@ -35,8 +56,10 @@ CREATE TABLE IF NOT EXISTS public.announcements (
 );
 
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read" ON public.announcements FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.announcements FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow authenticated read" ON public.announcements FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Only leadership can post" ON public.announcements FOR INSERT WITH CHECK (public.is_leadership());
+CREATE POLICY "Allow authenticated react and comment" ON public.announcements FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Only admins can delete" ON public.announcements FOR DELETE USING (public.is_admin());
 
 -- 3. EVENTS TABLE
 CREATE TABLE IF NOT EXISTS public.events (
@@ -51,9 +74,10 @@ CREATE TABLE IF NOT EXISTS public.events (
 );
 
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read" ON public.events FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.events FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.events FOR UPDATE USING (true);
+CREATE POLICY "Allow authenticated read" ON public.events FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Only leadership can create events" ON public.events FOR INSERT WITH CHECK (public.is_leadership());
+CREATE POLICY "Allow authenticated update attendance" ON public.events FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Only admins can delete events" ON public.events FOR DELETE USING (public.is_admin());
 
 -- 4. BADGES TABLE
 CREATE TABLE IF NOT EXISTS public.badge_data (
@@ -67,10 +91,10 @@ CREATE TABLE IF NOT EXISTS public.badge_data (
 );
 
 ALTER TABLE public.badge_data ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read" ON public.badge_data FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.badge_data FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.badge_data FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.badge_data FOR DELETE USING (true);
+CREATE POLICY "Allow authenticated read" ON public.badge_data FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow owners to initialize badge_data" ON public.badge_data FOR INSERT WITH CHECK (auth.uid() = profile_id OR public.is_admin());
+CREATE POLICY "Only admins can edit badge_data" ON public.badge_data FOR UPDATE USING (public.is_admin());
+CREATE POLICY "Allow owners or admins to delete badge_data" ON public.badge_data FOR DELETE USING (auth.uid() = profile_id OR public.is_admin());
 
 -- 5. SELF ATTESTED SKILLS TABLE
 CREATE TABLE IF NOT EXISTS public.self_attested (
@@ -79,10 +103,10 @@ CREATE TABLE IF NOT EXISTS public.self_attested (
 );
 
 ALTER TABLE public.self_attested ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read" ON public.self_attested FOR SELECT USING (true);
-CREATE POLICY "Allow public insert" ON public.self_attested FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update" ON public.self_attested FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete" ON public.self_attested FOR DELETE USING (true);
+CREATE POLICY "Allow authenticated read" ON public.self_attested FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow owners to initialize self_attested" ON public.self_attested FOR INSERT WITH CHECK (auth.uid() = profile_id OR public.is_admin());
+CREATE POLICY "Allow owners to update self_attested" ON public.self_attested FOR UPDATE USING (auth.uid() = profile_id OR public.is_admin());
+CREATE POLICY "Allow owners or admins to delete self_attested" ON public.self_attested FOR DELETE USING (auth.uid() = profile_id OR public.is_admin());
 
 -- 6. SEED INITIAL USERS DATABASE (For Demo / Login testing)
 INSERT INTO public.profiles (name, member_id, role, status) VALUES 
