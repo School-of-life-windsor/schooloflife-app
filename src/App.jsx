@@ -8,12 +8,7 @@ import AuthPage from './components/AuthPage';
 import { supabase, isConfigured } from './lib/supabaseClient';
 import { Compass } from 'lucide-react';
 
-const initialMembersList = [
-  { id: 1, name: 'Ayman Suh', role: 'ADMIN', status: 'APPROVED', memberId: 'SOL-2026-01' },
-  { id: 2, name: 'Lucas Miller', role: 'COMMUNITY_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-02' },
-  { id: 3, name: 'Emma Watson', role: 'VOLUNTEER', status: 'APPROVED', memberId: 'SOL-2026-03' },
-  { id: 4, name: 'Sophia Chen', role: 'CORE_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-04' }
-];
+const initialMembersList = [];
 
 const initialAnnouncements = [
   {
@@ -69,75 +64,9 @@ const initialEvents = [
   }
 ];
 
-const initialBadgeData = {
-  1: {
-    'Swimming': [true, true, false],
-    'Fishing': [true, false, false],
-    'Kayaking': [true, true, true],
-    'Archery': [true, false, false],
-    'Cooking': [true, true, false],
-    'Outdoorsmanship': [true, true, false]
-  },
-  2: {
-    'Swimming': [true, false, false],
-    'Fishing': [true, true, true],
-    'Kayaking': [true, false, false],
-    'Archery': [true, true, false],
-    'Cooking': [true, false, false],
-    'Outdoorsmanship': [false, false, false]
-  },
-  3: {
-    'Swimming': [true, true, true],
-    'Fishing': [true, true, false],
-    'Kayaking': [true, true, false],
-    'Archery': [true, true, true],
-    'Cooking': [true, true, true],
-    'Outdoorsmanship': [true, true, true]
-  },
-  4: {
-    'Swimming': [false, false, false],
-    'Fishing': [false, false, false],
-    'Kayaking': [false, false, false],
-    'Archery': [false, false, false],
-    'Cooking': [false, false, false],
-    'Outdoorsmanship': [false, false, false]
-  }
-};
+const initialBadgeData = {};
 
-const initialSelfAttested = {
-  1: {
-    'Outdoor Navigation': false,
-    'Knot Tying Mastery': false,
-    'Swimming Safety': false,
-    'Camp Cooking Basics': false,
-    'Camp Tool Maintenance': false,
-    'Archery Target Practice': false
-  },
-  2: {
-    'Outdoor Navigation': true,
-    'Knot Tying Mastery': true,
-    'Swimming Safety': false,
-    'Camp Cooking Basics': false,
-    'Camp Tool Maintenance': false,
-    'Archery Target Practice': false
-  },
-  3: {
-    'Outdoor Navigation': true,
-    'Knot Tying Mastery': true,
-    'Swimming Safety': true,
-    'Camp Cooking Basics': true,
-    'Camp Tool Maintenance': true,
-    'Archery Target Practice': true
-  },
-  4: {
-    'Outdoor Navigation': false,
-    'Knot Tying Mastery': false,
-    'Swimming Safety': false,
-    'Camp Cooking Basics': false,
-    'Camp Tool Maintenance': false,
-    'Archery Target Practice': false
-  }
-};
+const initialSelfAttested = {};
 
 export default function App() {
   // Authentication session state
@@ -253,21 +182,130 @@ export default function App() {
     }
   };
 
+  const fetchProfile = async (authUser) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (data) {
+        setCurrentUser(data);
+        setRole(data.role);
+      } else {
+        console.warn('Profile not found for authenticated user');
+      }
+    } catch (err) {
+      console.error('Fetch profile error:', err);
+    }
+  };
+
   useEffect(() => {
     loadDatabase();
   }, [currentUser]);
+
+  useEffect(() => {
+    if (isConfigured) {
+      // 1. Get initial session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          fetchProfile(session.user);
+        }
+      });
+
+      // 2. Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          await fetchProfile(session.user);
+        } else {
+          setCurrentUser(null);
+          setRole('COMMUNITY_MEMBER');
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    } else {
+      // LocalStorage fallback session reload
+      const sessionUser = JSON.parse(localStorage.getItem('sol_session') || 'null');
+      if (sessionUser) {
+        setCurrentUser(sessionUser);
+        setRole(sessionUser.role);
+      }
+    }
+  }, []);
 
   // Hook to handle login
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     setRole(user.role);
+    if (!isConfigured) {
+      localStorage.setItem('sol_session', JSON.stringify(user));
+    }
   };
 
   // Terminate session
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      if (isConfigured) {
+        await supabase.auth.signOut();
+      } else {
+        localStorage.removeItem('sol_session');
+      }
+    } catch (err) {
+      console.error(err);
+    }
     setCurrentUser(null);
     setRole('COMMUNITY_MEMBER');
     setActiveView('Dashboard');
+  };
+
+  // Delete account callback
+  const handleDeleteAccount = async (userId) => {
+    const isSelf = userId === currentUser?.id || userId === currentUser?.memberId;
+    try {
+      if (isConfigured) {
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+        if (error) throw error;
+
+        if (isSelf) {
+          await supabase.auth.signOut();
+        }
+      } else {
+        // LocalStorage mock deletion
+        const localUsers = JSON.parse(localStorage.getItem('sol_users') || '[]');
+        const updatedUsers = localUsers.filter(u => u.id !== userId && u.memberId !== userId);
+        localStorage.setItem('sol_users', JSON.stringify(updatedUsers));
+        
+        const localBadges = JSON.parse(localStorage.getItem('sol_badges') || '{}');
+        delete localBadges[userId];
+        localStorage.setItem('sol_badges', JSON.stringify(localBadges));
+
+        const localSelf = JSON.parse(localStorage.getItem('sol_self_attested') || '{}');
+        delete localSelf[userId];
+        localStorage.setItem('sol_self_attested', JSON.stringify(localSelf));
+
+        if (isSelf) {
+          localStorage.removeItem('sol_session');
+        }
+      }
+
+      if (isSelf) {
+        setCurrentUser(null);
+        setRole('COMMUNITY_MEMBER');
+        setActiveView('Dashboard');
+        alert('Your account has been deleted.');
+      } else {
+        loadDatabase();
+        alert('User account deleted successfully.');
+      }
+    } catch (err) {
+      console.error('Delete account error:', err);
+      alert('Failed to delete account.');
+    }
   };
 
   const handleUpdateAnnouncements = async (newAnnouncements) => {
@@ -463,6 +501,7 @@ export default function App() {
             members={membersWithCalculatedRanks}
             role={role}
             currentUser={currentUser}
+            onDeleteAccount={handleDeleteAccount}
           />
         );
       case 'UserManagement':
@@ -470,6 +509,7 @@ export default function App() {
           <UserManagement
             role={role}
             currentUser={currentUser}
+            onDeleteAccount={handleDeleteAccount}
           />
         ) : (
           <NoticeBoard

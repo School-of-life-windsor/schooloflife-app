@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Trophy, Waves, Fish, Anchor, Target, Flame, Tent, Star, User, BookOpen, CheckCircle } from 'lucide-react';
 
-export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelfAttested, members, role, currentUser }) {
+export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelfAttested, members, role, currentUser, onDeleteAccount }) {
   // Admin selects which scout to view/edit. Default is the current member.
   const [selectedScoutId, setSelectedScoutId] = useState(currentUser.id);
 
-  const activeScout = members.find((m) => m.id === parseInt(selectedScoutId)) || currentUser;
+  const activeScout = members.find((m) => String(m.id) === String(selectedScoutId)) || currentUser;
   const scoutBadges = badgeData[activeScout.id] || {};
   const scoutSelfAttested = selfAttested[activeScout.id] || {};
 
@@ -130,7 +130,7 @@ export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelf
             <select
               id="scout-select"
               value={selectedScoutId}
-              onChange={(e) => setSelectedScoutId(parseInt(e.target.value))}
+              onChange={(e) => setSelectedScoutId(e.target.value)}
               className="trail-border bg-canvas px-3 py-1.5 text-xs font-bold uppercase focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
             >
               {members.map((m) => (
@@ -398,6 +398,29 @@ export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelf
               );
             })}
           </div>
+        </div>
+      )}
+      {/* Danger Zone: Delete Account */}
+      {activeScout.id === currentUser.id && (
+        <div className="bg-red-50 border-2 border-red-900 p-5 mt-6 rounded-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 trail-shadow">
+          <div>
+            <h3 className="font-display font-black text-red-900 text-base uppercase">
+              Danger Zone
+            </h3>
+            <p className="text-xs text-red-800 font-semibold leading-relaxed mt-1">
+              Delete your account and permanently remove all your merit badges, self-attested skills, and logbook entries from the portal. This action is irreversible.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              if (window.confirm("Are you sure you want to delete your account? All your progress will be permanently erased. This cannot be undone.")) {
+                onDeleteAccount(currentUser.id);
+              }
+            }}
+            className="bg-red-700 text-canvas font-display font-black uppercase text-xs px-4 py-3 trail-border rounded-sm hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer shadow-[2px_2px_0px_0px_rgba(28,25,23,1)] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+          >
+            Delete Account
+          </button>
         </div>
       )}
     </section>

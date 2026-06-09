@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Check, X, ShieldAlert, Award, UserCheck } from 'lucide-react';
+import { Users, Check, X, ShieldAlert } from 'lucide-react';
 import { supabase, isConfigured } from '../lib/supabaseClient';
 
-export default function UserManagement({ role, currentUser }) {
+export default function UserManagement({ role, currentUser, onDeleteAccount }) {
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -27,29 +27,19 @@ export default function UserManagement({ role, currentUser }) {
         if (error) throw error;
         setUsersList(data || []);
       } else {
-        // Fallback LocalStorage
+        // Fallback LocalStorage (Cleaned from mock users)
         const localUsers = JSON.parse(localStorage.getItem('sol_users') || '[]');
-        const defaultUsers = [
-          { id: 1, name: 'Ayman Suh', role: 'ADMIN', status: 'APPROVED', memberId: 'SOL-2026-01' },
-          { id: 2, name: 'Lucas Miller', role: 'COMMUNITY_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-02' },
-          { id: 3, name: 'Emma Watson', role: 'VOLUNTEER', status: 'APPROVED', memberId: 'SOL-2026-03' },
-          { id: 4, name: 'Sophia Chen', role: 'CORE_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-04' }
-        ];
-
-        // Combine default users and newly registered ones
-        const combined = [...defaultUsers];
-        localUsers.forEach((lu) => {
-          if (!combined.some((c) => c.memberId === lu.memberId)) {
-            combined.push({
-              id: lu.id,
-              name: lu.name,
-              memberId: lu.memberId,
-              member_id: lu.memberId, // match Supabase snake_case key
-              role: lu.role,
-              status: lu.status
-            });
-          }
-        });
+        const combined = localUsers.map((lu) => ({
+          id: lu.id,
+          name: lu.name,
+          memberId: lu.memberId,
+          member_id: lu.memberId, // match Supabase snake_case key
+          username: lu.username,
+          email: lu.email,
+          age: lu.age,
+          role: lu.role,
+          status: lu.status
+        }));
         setUsersList(combined);
       }
     } catch (err) {
@@ -145,10 +135,10 @@ export default function UserManagement({ role, currentUser }) {
         <Users className="w-8 h-8 text-forest" />
         <div>
           <h1 className="text-3xl font-display font-black tracking-tight text-forest m-0">
-            USER MANAGEMENT
+            USER DIRECTORY
           </h1>
           <p className="text-stone-600 text-sm">
-            Approve registered brothers, adjust security clearance levels, and assign roster ranks.
+            Manage registered members, clearance levels, and review signup details.
           </p>
         </div>
       </div>
@@ -163,7 +153,7 @@ export default function UserManagement({ role, currentUser }) {
       <div className="bg-canvas border-2 border-stone-900 rounded-sm overflow-hidden trail-shadow">
         <div className="p-4 bg-stone-100 border-b-2 border-stone-900 flex justify-between items-center">
           <span className="text-xs font-black uppercase text-stone-900 tracking-wider">
-            Brothers Directory ({usersList.length} total)
+            Roster ({usersList.length} total)
           </span>
           <button
             onClick={fetchUsers}
@@ -187,6 +177,8 @@ export default function UserManagement({ role, currentUser }) {
               <thead>
                 <tr className="bg-stone-200 border-b border-stone-900 text-[10px] font-black uppercase text-stone-750">
                   <th className="p-3">Brother Info</th>
+                  <th className="p-3">Email</th>
+                  <th className="p-3">Age</th>
                   <th className="p-3">Member ID</th>
                   <th className="p-3">Status</th>
                   <th className="p-3">Assigned Role Tier</th>
@@ -206,9 +198,18 @@ export default function UserManagement({ role, currentUser }) {
                             {user.name} 
                             {isSelf && <span className="bg-stone-800 text-canvas text-[8px] px-1.5 py-0.5 rounded-sm">You</span>}
                           </span>
+                          {user.username && (
+                            <span className="text-[10px] text-stone-500 font-semibold">@{user.username}</span>
+                          )}
                         </div>
                       </td>
-                      <td className="p-3 font-mono text-xs font-bold text-stone-600">
+                      <td className="p-3 font-semibold text-stone-650">
+                        {user.email || 'N/A'}
+                      </td>
+                      <td className="p-3 font-semibold text-stone-650">
+                        {user.age || 'N/A'}
+                      </td>
+                      <td className="p-3 font-mono text-xs font-bold text-stone-650">
                         {mId}
                       </td>
                       <td className="p-3">
@@ -225,7 +226,7 @@ export default function UserManagement({ role, currentUser }) {
                           <select
                             value={user.role}
                             onChange={(e) => handleUpdateRole(user.id, e.target.value)}
-                            className="bg-canvas border border-stone-300 text-xs font-bold uppercase py-1 px-2 focus:outline-none focus:ring-1 focus:ring-campfire rounded-sm"
+                            className="bg-canvas border border-stone-300 text-xs font-bold uppercase py-1 px-2 focus:outline-none focus:ring-1 focus:ring-campfire rounded-sm cursor-pointer"
                           >
                             {roles.map((r) => (
                               <option key={r.value} value={r.value}>
@@ -256,6 +257,17 @@ export default function UserManagement({ role, currentUser }) {
                                 <X className="w-4 h-4" />
                               </button>
                             )}
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to delete ${user.name}'s account? This action is permanent and cannot be undone.`)) {
+                                  onDeleteAccount(user.id);
+                                }
+                              }}
+                              className="bg-stone-900 text-canvas p-1.5 trail-border rounded-sm hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer"
+                              title="Delete Member Account"
+                            >
+                              <X className="w-4 h-4 text-red-500" />
+                            </button>
                           </div>
                         )}
                       </td>

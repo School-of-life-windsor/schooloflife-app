@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldAlert, Compass, UserPlus, LogIn, Lock } from 'lucide-react';
 import { supabase, isConfigured } from '../lib/supabaseClient';
 
 export default function AuthPage({ onLoginSuccess }) {
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Check if we are redirected from a password recovery link
+  const isRecoveryMode = window.location.hash.includes('type=recovery') || window.location.search.includes('recovery=true');
+  
+  const [viewState, setViewState] = useState(isRecoveryMode ? 'reset_password' : 'login'); // 'login', 'signup', 'forgot_password', 'reset_password'
+  
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -19,11 +23,19 @@ export default function AuthPage({ onLoginSuccess }) {
   const [isPendingScreen, setIsPendingScreen] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
 
+  useEffect(() => {
+    if (isRecoveryMode) {
+      setViewState('reset_password');
+    }
+  }, [isRecoveryMode]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setStatusMessage(null);
 
     const identifier = loginIdentifier.trim();
+    const trimmedPassword = loginPassword;
+
     if (!identifier) {
       setStatusMessage('Please enter your Username, Email, or Member ID.');
       setStatusType('error');
@@ -32,77 +44,82 @@ export default function AuthPage({ onLoginSuccess }) {
 
     try {
       if (isConfigured) {
-        // Query Supabase using username, email, or member_id
-        const { data, error } = await supabase
+        let emailToAuthenticate = identifier;
+
+        // If user logged in using username or member ID, resolve it to their email
+        if (!identifier.includes('@')) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email')
+            .or(`member_id.eq.${identifier.toUpperCase()},username.eq.${identifier}`)
+            .maybeSingle();
+
+          if (profile && profile.email) {
+            emailToAuthenticate = profile.email;
+          } else {
+            setStatusMessage('User profile not found. Verify your identifier or register below.');
+            setStatusType('error');
+            return;
+          }
+        }
+
+        // Authenticate with Supabase Auth
+        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+          email: emailToAuthenticate,
+          password: trimmedPassword
+        });
+
+        if (authErr) {
+          setStatusMessage(authErr.message);
+          setStatusType('error');
+          return;
+        }
+
+        // Fetch matching database profile
+        const { data: profile, error: profileErr } = await supabase
           .from('profiles')
           .select('*')
-          .or(`member_id.eq.${identifier.toUpperCase()},username.eq.${identifier},email.eq.${identifier}`)
-          .maybeSingle();
+          .eq('id', authData.user.id)
+          .single();
 
-        if (error || !data) {
-          setStatusMessage('User not found. Please register below.');
+        if (profileErr || !profile) {
+          setStatusMessage('Login succeeded, but profile record was not found.');
           setStatusType('error');
           return;
         }
 
-        // Validate password (only if it is set in the database, for legacy seeded accounts fallback)
-        if (data.password && data.password !== loginPassword) {
-          setStatusMessage('Incorrect password.');
-          setStatusType('error');
-          return;
-        }
-
-        if (data.status === 'PENDING') {
-          setPendingUser(data);
-          setIsPendingScreen(true);
-          return;
-        }
-
-        if (data.status === 'DENIED') {
+        if (profile.status === 'DENIED') {
           setStatusMessage('Your registration request has been declined by the administrator.');
           setStatusType('error');
+          await supabase.auth.signOut();
           return;
         }
 
-        onLoginSuccess(data);
+        onLoginSuccess(profile);
       } else {
         // LocalStorage fallback
         const localUsers = JSON.parse(localStorage.getItem('sol_users') || '[]');
-        const defaultUsers = [
-          { id: 1, name: 'Ayman Suh', role: 'ADMIN', status: 'APPROVED', memberId: 'SOL-2026-01', username: 'ayman', email: 'ayman@example.com' },
-          { id: 2, name: 'Lucas Miller', role: 'COMMUNITY_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-02', username: 'lucas', email: 'lucas@example.com' },
-          { id: 3, name: 'Emma Watson', role: 'VOLUNTEER', status: 'APPROVED', memberId: 'SOL-2026-03', username: 'emma', email: 'emma@example.com' },
-          { id: 4, name: 'Sophia Chen', role: 'CORE_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-04', username: 'sophia', email: 'sophia@example.com' }
-        ];
-
-        const matchUser = [...localUsers, ...defaultUsers].find(
+        const matchUser = localUsers.find(
           (u) => 
             u.memberId?.toUpperCase() === identifier.toUpperCase() ||
-            u.member_id?.toUpperCase() === identifier.toUpperCase() ||
-            u.username === identifier ||
-            u.email === identifier
+            u.username?.toLowerCase() === identifier.toLowerCase() ||
+            u.email?.toLowerCase() === identifier.toLowerCase()
         );
 
         if (!matchUser) {
-          setStatusMessage('User not found. (Use SOL-2026-01 for Admin demo account)');
+          setStatusMessage('User not found. (Register a new account to test locally)');
           setStatusType('error');
           return;
         }
 
-        if (matchUser.password && matchUser.password !== loginPassword) {
+        if (matchUser.password !== trimmedPassword) {
           setStatusMessage('Incorrect password.');
           setStatusType('error');
-          return;
-        }
-
-        if (matchUser.status === 'PENDING') {
-          setPendingUser(matchUser);
-          setIsPendingScreen(true);
           return;
         }
 
         if (matchUser.status === 'DENIED') {
-          setStatusMessage('Your registration request has been declined by the administrator.');
+          setStatusMessage('Your registration request has been declined.');
           setStatusType('error');
           return;
         }
@@ -144,37 +161,69 @@ export default function AuthPage({ onLoginSuccess }) {
       return;
     }
 
-    // memberId will be auto-generated from username
     const generatedMemberId = `SOL-${trimmedUsername.toUpperCase()}`;
 
     try {
       if (isConfigured) {
-        // 1. Check if username or email exists
-        const { data: existing } = await supabase
+        // 1. Check if username exists in profiles
+        const { data: existingUser } = await supabase
           .from('profiles')
           .select('id')
-          .or(`member_id.eq.${generatedMemberId},username.eq.${trimmedUsername},email.eq.${trimmedEmail}`)
+          .eq('username', trimmedUsername)
           .maybeSingle();
 
-        if (existing) {
-          setStatusMessage('Username, Email, or Member ID is already registered.');
+        if (existingUser) {
+          setStatusMessage('Username is already taken.');
           setStatusType('error');
           return;
         }
 
-        // 2. Insert profile
+        // 2. Sign up with Supabase Auth
+        const { data: authData, error: authErr } = await supabase.auth.signUp({
+          email: trimmedEmail,
+          password: trimmedPassword,
+          options: {
+            data: {
+              name: trimmedName,
+              username: trimmedUsername,
+              age: parsedAge,
+              waiver_consent: waiverConsent
+            }
+          }
+        });
+
+        if (authErr) {
+          setStatusMessage(authErr.message);
+          setStatusType('error');
+          return;
+        }
+
+        if (!authData.user) {
+          throw new Error('User creation failed.');
+        }
+
+        // Check if database contains any profiles. If count is 0, this first user becomes ADMIN.
+        const { count } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true });
+        
+        const isFirstUser = count === 0;
+        const initialRole = isFirstUser ? 'ADMIN' : 'COMMUNITY_MEMBER';
+
+        // 3. Insert profile details into public.profiles
         const { data: newProfile, error: profileErr } = await supabase
           .from('profiles')
           .insert([
             {
+              id: authData.user.id,
               name: trimmedName,
               member_id: generatedMemberId,
               username: trimmedUsername,
               email: trimmedEmail,
-              password: trimmedPassword,
+              password: trimmedPassword, // saved for compatibility
               age: parsedAge,
               waiver_consent: waiverConsent,
-              role: 'COMMUNITY_MEMBER',
+              role: initialRole,
               status: 'APPROVED'
             }
           ])
@@ -182,15 +231,15 @@ export default function AuthPage({ onLoginSuccess }) {
           .single();
 
         if (profileErr || !newProfile) {
-          throw new Error(profileErr?.message || 'Failed to create profile');
+          throw new Error(profileErr?.message || 'Failed to create profile row');
         }
 
-        // 3. Insert empty badges row
+        // 4. Create merit badges row
         await supabase
           .from('badge_data')
           .insert([{ profile_id: newProfile.id }]);
 
-        // 4. Insert empty self_attested row
+        // 5. Create self-attestation row
         const defaultSelfSkills = {
           'Outdoor Navigation': false,
           'Knot Tying Mastery': false,
@@ -203,32 +252,41 @@ export default function AuthPage({ onLoginSuccess }) {
           .from('self_attested')
           .insert([{ profile_id: newProfile.id, skills: defaultSelfSkills }]);
 
-        onLoginSuccess(newProfile);
+        // Check if session is already active (unverified signup redirection)
+        if (authData.session) {
+          onLoginSuccess(newProfile);
+        } else {
+          setStatusMessage('Registration successful! Please check your email for a verification link to confirm your account.');
+          setStatusType('success');
+          // Reset form fields
+          setName('');
+          setUsername('');
+          setEmail('');
+          setPassword('');
+          setAge('');
+          setWaverConsent(false);
+          setViewState('login');
+        }
       } else {
-        // LocalStorage mock
+        // LocalStorage fallback
         const localUsers = JSON.parse(localStorage.getItem('sol_users') || '[]');
-        const defaultUsers = [
-          { id: 1, name: 'Ayman Suh', role: 'ADMIN', status: 'APPROVED', memberId: 'SOL-2026-01', username: 'ayman', email: 'ayman@example.com' },
-          { id: 2, name: 'Lucas Miller', role: 'COMMUNITY_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-02', username: 'lucas', email: 'lucas@example.com' },
-          { id: 3, name: 'Emma Watson', role: 'VOLUNTEER', status: 'APPROVED', memberId: 'SOL-2026-03', username: 'emma', email: 'emma@example.com' },
-          { id: 4, name: 'Sophia Chen', role: 'CORE_MEMBER', status: 'APPROVED', memberId: 'SOL-2026-04', username: 'sophia', email: 'sophia@example.com' }
-        ];
-
-        const exists = [...localUsers, ...defaultUsers].some(
+        const exists = localUsers.some(
           (u) => 
-            u.memberId?.toUpperCase() === generatedMemberId.toUpperCase() ||
             u.username?.toLowerCase() === trimmedUsername.toLowerCase() ||
             u.email?.toLowerCase() === trimmedEmail.toLowerCase()
         );
 
         if (exists) {
-          setStatusMessage('Username, Email, or Member ID is already registered.');
+          setStatusMessage('Username or Email is already registered.');
           setStatusType('error');
           return;
         }
 
+        const isFirstUser = localUsers.length === 0;
+        const initialRole = isFirstUser ? 'ADMIN' : 'COMMUNITY_MEMBER';
+
         const newUser = {
-          id: Date.now(),
+          id: Date.now().toString(),
           name: trimmedName,
           memberId: generatedMemberId,
           member_id: generatedMemberId,
@@ -237,14 +295,14 @@ export default function AuthPage({ onLoginSuccess }) {
           password: trimmedPassword,
           age: parsedAge,
           waiver_consent: waiverConsent,
-          role: 'COMMUNITY_MEMBER',
+          role: initialRole,
           status: 'APPROVED'
         };
 
         const updatedUsers = [...localUsers, newUser];
         localStorage.setItem('sol_users', JSON.stringify(updatedUsers));
 
-        // Setup empty badge structure
+        // Seed empty badges
         const localBadges = JSON.parse(localStorage.getItem('sol_badges') || '{}');
         localBadges[newUser.id] = {
           'Swimming': [false, false, false],
@@ -256,7 +314,7 @@ export default function AuthPage({ onLoginSuccess }) {
         };
         localStorage.setItem('sol_badges', JSON.stringify(localBadges));
 
-        // Setup empty self-attestation structure
+        // Seed empty self attested
         const localSelfAttested = JSON.parse(localStorage.getItem('sol_self_attested') || '{}');
         localSelfAttested[newUser.id] = {
           'Outdoor Navigation': false,
@@ -272,7 +330,82 @@ export default function AuthPage({ onLoginSuccess }) {
       }
     } catch (err) {
       console.error(err);
-      setStatusMessage('Failed to sign up. Make sure the database schema is run.');
+      setStatusMessage('Registration failed: ' + err.message);
+      setStatusType('error');
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setStatusMessage(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setStatusMessage('Please enter your email address.');
+      setStatusType('error');
+      return;
+    }
+
+    try {
+      if (isConfigured) {
+        const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+          redirectTo: window.location.origin + '?recovery=true'
+        });
+
+        if (error) {
+          setStatusMessage(error.message);
+          setStatusType('error');
+          return;
+        }
+
+        setStatusMessage('Password reset email sent! Check your inbox for reset link.');
+        setStatusType('success');
+        setEmail('');
+      } else {
+        setStatusMessage('Password reset is not supported in local storage fallback mode.');
+        setStatusType('error');
+      }
+    } catch (err) {
+      console.error(err);
+      setStatusMessage('Failed to send reset email.');
+      setStatusType('error');
+    }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    setStatusMessage(null);
+
+    const trimmedPassword = password.trim();
+    if (!trimmedPassword) {
+      setStatusMessage('Please enter a new password.');
+      setStatusType('error');
+      return;
+    }
+
+    try {
+      if (isConfigured) {
+        const { error } = await supabase.auth.updateUser({ password: trimmedPassword });
+        if (error) {
+          setStatusMessage(error.message);
+          setStatusType('error');
+          return;
+        }
+
+        setStatusMessage('Password updated! You can now log in.');
+        setStatusType('success');
+        
+        // Clean URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setViewState('login');
+        setPassword('');
+      } else {
+        setStatusMessage('Password reset is not supported in local storage fallback mode.');
+        setStatusType('error');
+      }
+    } catch (err) {
+      console.error(err);
+      setStatusMessage('Failed to update password.');
       setStatusType('error');
     }
   };
@@ -281,7 +414,7 @@ export default function AuthPage({ onLoginSuccess }) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-stone-100 p-6 md:p-8 trail-border trail-shadow rounded-sm text-center flex flex-col gap-5">
-          <div className="w-16 h-16 bg-amber-100 text-amber-950 border-2 border-amber-950 rounded-full flex items-center justify-center mx-auto shadow-sm">
+          <div className="w-16 h-16 bg-amber-100 text-amber-900 border-2 border-amber-950 rounded-full flex items-center justify-center mx-auto shadow-sm">
             <Lock className="w-8 h-8 animate-pulse" />
           </div>
 
@@ -320,7 +453,7 @@ export default function AuthPage({ onLoginSuccess }) {
       {/* Brand Header */}
       <div className="flex flex-col items-center gap-2 mb-8 text-center">
         <div className="w-16 h-16 bg-forest text-canvas trail-border trail-shadow rounded-full flex items-center justify-center">
-          <Compass className="w-9 h-9 text-campfire animate-spin-slow animate-spin-slow-duration" />
+          <Compass className="w-9 h-9 text-campfire animate-spin-slow" />
         </div>
         <h1 className="font-display font-black text-3xl text-forest uppercase tracking-wider mt-2">
           SCHOOL OF LIFE
@@ -331,31 +464,34 @@ export default function AuthPage({ onLoginSuccess }) {
       </div>
 
       <div className="max-w-md w-full bg-stone-100 p-6 md:p-8 trail-border trail-shadow rounded-sm flex flex-col gap-6">
-        {/* Toggle Headings */}
-        <div className="flex border-b-2 border-stone-900">
-          <button
-            onClick={() => {
-              setIsSignUp(false);
-              setStatusMessage(null);
-            }}
-            className={`flex-1 pb-3 text-sm font-display font-black uppercase text-center cursor-pointer transition-all border-b-4 ${
-              !isSignUp ? 'border-campfire text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'
-            }`}
-          >
-            Login
-          </button>
-          <button
-            onClick={() => {
-              setIsSignUp(true);
-              setStatusMessage(null);
-            }}
-            className={`flex-1 pb-3 text-sm font-display font-black uppercase text-center cursor-pointer transition-all border-b-4 ${
-              isSignUp ? 'border-campfire text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'
-            }`}
-          >
-            Register
-          </button>
-        </div>
+        
+        {/* Toggle Headings (Hidden on recovery views) */}
+        {viewState !== 'forgot_password' && viewState !== 'reset_password' && (
+          <div className="flex border-b-2 border-stone-900">
+            <button
+              onClick={() => {
+                setViewState('login');
+                setStatusMessage(null);
+              }}
+              className={`flex-1 pb-3 text-sm font-display font-black uppercase text-center cursor-pointer transition-all border-b-4 ${
+                viewState === 'login' ? 'border-campfire text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => {
+                setViewState('signup');
+                setStatusMessage(null);
+              }}
+              className={`flex-1 pb-3 text-sm font-display font-black uppercase text-center cursor-pointer transition-all border-b-4 ${
+                viewState === 'signup' ? 'border-campfire text-stone-900' : 'border-transparent text-stone-400 hover:text-stone-600'
+              }`}
+            >
+              Register
+            </button>
+          </div>
+        )}
 
         {statusMessage && (
           <div className={`p-3 trail-border text-xs font-bold rounded-sm flex items-center gap-2 ${
@@ -366,8 +502,8 @@ export default function AuthPage({ onLoginSuccess }) {
           </div>
         )}
 
-        {isSignUp ? (
-          // Sign Up Request Form
+        {viewState === 'signup' && (
+          // Sign Up Form
           <form onSubmit={handleSignUp} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <label htmlFor="signup-name" className="text-xs font-bold uppercase text-stone-700">
@@ -441,7 +577,7 @@ export default function AuthPage({ onLoginSuccess }) {
               />
             </div>
 
-            <div className="flex items-start gap-2.5 mt-2 bg-stone-55 p-3 trail-border rounded-sm">
+            <div className="flex items-start gap-2.5 mt-2 bg-stone-50 p-3 trail-border rounded-sm">
               <input
                 id="signup-waiver"
                 type="checkbox"
@@ -450,7 +586,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 className="w-4 h-4 mt-0.5 border-stone-400 rounded-sm cursor-pointer accent-forest focus:ring-campfire"
               />
               <label htmlFor="signup-waiver" className="text-[10px] text-stone-700 font-semibold leading-normal select-none cursor-pointer">
-                I hereby consent to the <span className="font-bold text-campfire underline text-campfire-hover">School of Life Waiver & Release of Liability</span>, acknowledging the physical requirements and safety procedures of active wilderness programs.
+                I hereby consent to the <span className="font-bold text-campfire underline">School of Life Waiver & Release of Liability</span>, acknowledging the physical requirements and safety procedures of active wilderness programs.
               </label>
             </div>
 
@@ -462,7 +598,9 @@ export default function AuthPage({ onLoginSuccess }) {
               <UserPlus className="w-4 h-4" /> Join the School of Life
             </button>
           </form>
-        ) : (
+        )}
+
+        {viewState === 'login' && (
           // Login Form
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
@@ -474,15 +612,27 @@ export default function AuthPage({ onLoginSuccess }) {
                 type="text"
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
-                placeholder="e.g., SOL-2026-01 or ayman"
+                placeholder="e.g., ayman or ayman@example.com"
                 className="trail-border bg-canvas px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label htmlFor="login-password" className="text-xs font-bold uppercase text-stone-700">
-                Password
-              </label>
+              <div className="flex justify-between items-center">
+                <label htmlFor="login-password" className="text-xs font-bold uppercase text-stone-700">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewState('forgot_password');
+                    setStatusMessage(null);
+                  }}
+                  className="text-right text-[10px] text-stone-500 font-bold hover:underline cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <input
                 id="login-password"
                 type="password"
@@ -491,8 +641,8 @@ export default function AuthPage({ onLoginSuccess }) {
                 placeholder="••••••••"
                 className="trail-border bg-canvas px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
               />
-              <span className="text-[10px] text-stone-500 font-semibold leading-normal">
-                For legacy demo accounts (e.g. `SOL-2026-01`), you can leave the password blank.
+              <span className="text-[10px] text-stone-550 font-semibold leading-normal">
+                If using a seeded database account, you can leave the password blank.
               </span>
             </div>
 
@@ -505,10 +655,87 @@ export default function AuthPage({ onLoginSuccess }) {
             </button>
           </form>
         )}
+
+        {viewState === 'forgot_password' && (
+          // Forgot Password Form
+          <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+            <div className="border-b border-stone-300 pb-2">
+              <h3 className="font-display font-black text-stone-900 uppercase text-lg">Reset Password</h3>
+              <p className="text-[11px] text-stone-500 font-semibold leading-relaxed mt-1">
+                Enter your email address below and we'll send you a secure link to reset your account password.
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              <label htmlFor="forgot-email" className="text-xs font-bold uppercase text-stone-700">
+                Email Address
+              </label>
+              <input
+                id="forgot-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g., ahmad@example.com"
+                className="trail-border bg-canvas px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="bg-campfire text-canvas py-2.5 font-display font-black uppercase tracking-wider trail-border trail-shadow-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px] cursor-pointer rounded-sm"
+            >
+              Send Reset Link
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setViewState('login');
+                setStatusMessage(null);
+              }}
+              className="text-center text-xs font-bold text-stone-600 hover:underline uppercase tracking-wide cursor-pointer mt-1"
+            >
+              ← Back to Login
+            </button>
+          </form>
+        )}
+
+        {viewState === 'reset_password' && (
+          // Reset Password view (Redirect destination)
+          <form onSubmit={handleUpdatePassword} className="flex flex-col gap-4">
+            <div className="border-b border-stone-300 pb-2">
+              <h3 className="font-display font-black text-stone-900 uppercase text-lg">Set New Password</h3>
+              <p className="text-[11px] text-stone-500 font-semibold leading-relaxed mt-1">
+                Set a strong, new password for your account to secure access.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="reset-password" className="text-xs font-bold uppercase text-stone-700">
+                New Password
+              </label>
+              <input
+                id="reset-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="trail-border bg-canvas px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="bg-forest text-canvas py-2.5 font-display font-black uppercase tracking-wider trail-border trail-shadow-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px] cursor-pointer rounded-sm"
+            >
+              Update Password
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="mt-8 text-center text-[10px] text-stone-500 font-semibold">
-        <span>© 2026 School of Life Windsor. Connected to Supabase.</span>
+        <span>© 2026 School of Life Windsor.</span>
       </div>
     </div>
   );
