@@ -263,7 +263,7 @@ export default function AuthPage({ onLoginSuccess }) {
           setEmail('');
           setPassword('');
           setAge('');
-          setWaverConsent(false);
+          setWaiverConsent(false);
           setViewState('login');
         }
       } else {
