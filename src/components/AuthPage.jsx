@@ -51,7 +51,7 @@ export default function AuthPage({ onLoginSuccess }) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('email')
-            .or(`member_id.eq.${identifier.toUpperCase()},username.eq.${identifier}`)
+            .or(`member_id.ilike.${identifier},username.ilike.${identifier}`)
             .maybeSingle();
 
           if (profile && profile.email) {
@@ -169,7 +169,7 @@ export default function AuthPage({ onLoginSuccess }) {
         const { data: existingUser } = await supabase
           .from('profiles')
           .select('id')
-          .eq('username', trimmedUsername)
+          .ilike('username', trimmedUsername)
           .maybeSingle();
 
         if (existingUser) {
