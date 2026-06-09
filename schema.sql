@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   status TEXT NOT NULL DEFAULT 'APPROVED', -- default is APPROVED for instant signup
   username TEXT,
   email TEXT,
-  password TEXT,
   age INTEGER,
   waiver_consent BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
