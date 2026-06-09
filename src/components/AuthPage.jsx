@@ -220,7 +220,6 @@ export default function AuthPage({ onLoginSuccess }) {
               member_id: generatedMemberId,
               username: trimmedUsername,
               email: trimmedEmail,
-              password: trimmedPassword, // saved for compatibility
               age: parsedAge,
               waiver_consent: waiverConsent,
               role: initialRole,
