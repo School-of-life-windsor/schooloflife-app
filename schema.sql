@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT,
   age INTEGER,
   waiver_consent BOOLEAN DEFAULT FALSE,
+  eula_consent BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -50,6 +51,11 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   category TEXT NOT NULL,
   date TEXT NOT NULL,
   body TEXT NOT NULL,
+  author_name TEXT DEFAULT 'School of Life',
+  author_id TEXT,
+  author_username TEXT,
+  flagged BOOLEAN DEFAULT FALSE,
+  flagged_by JSONB DEFAULT '[]'::jsonb,
   reactions JSONB NOT NULL DEFAULT '{}'::jsonb,
   comments JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL

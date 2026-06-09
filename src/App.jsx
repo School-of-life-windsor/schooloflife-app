@@ -309,26 +309,70 @@ export default function App() {
   };
 
   const handleUpdateAnnouncements = async (newAnnouncements) => {
-    setAnnouncements(newAnnouncements);
-    try {
-      if (isConfigured) {
-        const latest = newAnnouncements[0];
-        await supabase
-          .from('announcements')
-          .insert([
-            {
-              title: latest.title,
-              category: latest.category,
-              date: latest.date,
-              body: latest.body,
-              visibility: latest.visibility || 'COMMUNITY_MEMBER'
-            }
-          ]);
-      } else {
+    if (newAnnouncements.length > announcements.length) {
+      const latest = newAnnouncements[0];
+      try {
+        if (isConfigured) {
+          const { data, error } = await supabase
+            .from('announcements')
+            .insert([
+              {
+                title: latest.title,
+                category: latest.category,
+                date: latest.date,
+                body: latest.body,
+                visibility: latest.visibility || 'COMMUNITY_MEMBER',
+                author_name: latest.author_name || 'School of Life',
+                author_id: latest.author_id,
+                author_username: latest.author_username,
+                flagged: false,
+                flagged_by: []
+              }
+            ])
+            .select()
+            .single();
+
+          if (error) throw error;
+          if (data) {
+            setAnnouncements([data, ...announcements]);
+            return;
+          }
+        } else {
+          localStorage.setItem('sol_announcements', JSON.stringify(newAnnouncements));
+          setAnnouncements(newAnnouncements);
+        }
+      } catch (e) {
+        console.error('Announcements insert failed:', e);
+        setAnnouncements(newAnnouncements);
+      }
+    } else {
+      setAnnouncements(newAnnouncements);
+      if (!isConfigured) {
         localStorage.setItem('sol_announcements', JSON.stringify(newAnnouncements));
       }
+    }
+  };
+
+  const handleDeleteAnnouncement = async (noticeId) => {
+    try {
+      if (isConfigured) {
+        const { error } = await supabase
+          .from('announcements')
+          .delete()
+          .eq('id', noticeId);
+        if (error) throw error;
+      }
+      
+      const updated = announcements.filter(a => a.id !== noticeId);
+      setAnnouncements(updated);
+      
+      if (!isConfigured) {
+        localStorage.setItem('sol_announcements', JSON.stringify(updated));
+      }
+      alert('Announcement deleted successfully.');
     } catch (e) {
-      console.error(e);
+      console.error('Delete announcement failed:', e);
+      alert('Failed to delete announcement.');
     }
   };
 
@@ -477,6 +521,7 @@ export default function App() {
             announcements={announcements}
             setAnnouncements={handleUpdateAnnouncements}
             onUpdateNotice={handleUpdateNotice}
+            onDeleteNotice={handleDeleteAnnouncement}
             role={role}
             currentUser={currentUser}
           />
@@ -516,6 +561,7 @@ export default function App() {
             announcements={announcements}
             setAnnouncements={handleUpdateAnnouncements}
             onUpdateNotice={handleUpdateNotice}
+            onDeleteNotice={handleDeleteAnnouncement}
             role={role}
             currentUser={currentUser}
           />
@@ -526,6 +572,7 @@ export default function App() {
             announcements={announcements}
             setAnnouncements={handleUpdateAnnouncements}
             onUpdateNotice={handleUpdateNotice}
+            onDeleteNotice={handleDeleteAnnouncement}
             role={role}
             currentUser={currentUser}
           />

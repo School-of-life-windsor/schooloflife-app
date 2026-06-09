@@ -14,6 +14,7 @@ export default function AuthPage({ onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [age, setAge] = useState('');
   const [waiverConsent, setWaiverConsent] = useState(false);
+  const [eulaConsent, setEulaConsent] = useState(false);
   
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -161,6 +162,12 @@ export default function AuthPage({ onLoginSuccess }) {
       return;
     }
 
+    if (!eulaConsent) {
+      setStatusMessage('You must agree to the EULA to register.');
+      setStatusType('error');
+      return;
+    }
+
     const generatedMemberId = `SOL-${trimmedUsername.toUpperCase()}`;
 
     try {
@@ -187,7 +194,8 @@ export default function AuthPage({ onLoginSuccess }) {
               name: trimmedName,
               username: trimmedUsername,
               age: parsedAge,
-              waiver_consent: waiverConsent
+              waiver_consent: waiverConsent,
+              eula_consent: eulaConsent
             }
           }
         });
@@ -222,6 +230,7 @@ export default function AuthPage({ onLoginSuccess }) {
               email: trimmedEmail,
               age: parsedAge,
               waiver_consent: waiverConsent,
+              eula_consent: eulaConsent,
               role: initialRole,
               status: 'APPROVED'
             }
@@ -264,6 +273,7 @@ export default function AuthPage({ onLoginSuccess }) {
           setPassword('');
           setAge('');
           setWaiverConsent(false);
+          setEulaConsent(false);
           setViewState('login');
         }
       } else {
@@ -294,6 +304,7 @@ export default function AuthPage({ onLoginSuccess }) {
           password: trimmedPassword,
           age: parsedAge,
           waiver_consent: waiverConsent,
+          eula_consent: eulaConsent,
           role: initialRole,
           status: 'APPROVED'
         };
@@ -586,6 +597,19 @@ export default function AuthPage({ onLoginSuccess }) {
               />
               <label htmlFor="signup-waiver" className="text-[10px] text-stone-700 font-semibold leading-normal select-none cursor-pointer">
                 I hereby consent to the <span className="font-bold text-campfire underline">School of Life Waiver & Release of Liability</span>, acknowledging the physical requirements and safety procedures of active wilderness programs.
+              </label>
+            </div>
+
+            <div className="flex items-start gap-2.5 bg-stone-50 p-3 trail-border rounded-sm">
+              <input
+                id="signup-eula"
+                type="checkbox"
+                checked={eulaConsent}
+                onChange={(e) => setEulaConsent(e.target.checked)}
+                className="w-4 h-4 mt-0.5 border-stone-400 rounded-sm cursor-pointer accent-forest focus:ring-campfire"
+              />
+              <label htmlFor="signup-eula" className="text-[10px] text-stone-700 font-semibold leading-normal select-none cursor-pointer">
+                I agree to the <span className="font-bold text-campfire underline">End User License Agreement (EULA)</span> and will not post objectionable, offensive, or abusive content on the platform.
               </label>
             </div>
 

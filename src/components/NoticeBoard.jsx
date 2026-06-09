@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-import { Megaphone, Plus, MessageSquare } from 'lucide-react';
+import { Megaphone, Plus, MessageSquare, Ban, Flag, Trash2, ShieldAlert } from 'lucide-react';
 import { ROLE_LEVELS } from '../lib/supabaseClient';
 
-export default function NoticeBoard({ announcements, setAnnouncements, onUpdateNotice, role, currentUser }) {
+export default function NoticeBoard({ announcements, setAnnouncements, onUpdateNotice, onDeleteNotice, role, currentUser }) {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('General');
   const [visibility, setVisibility] = useState('COMMUNITY_MEMBER');
   const [content, setContent] = useState('');
   const [errors, setErrors] = useState({});
   const [expandedComments, setExpandedComments] = useState({});
+  const [blockedUsers, setBlockedUsers] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sol_blocked_users');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const categories = ['Gear Notice', 'Schedule Change', 'Weather Alert', 'General', 'Achievement'];
 
@@ -52,6 +60,11 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
       }),
       body: content.trim(),
       visibility,
+      author_name: currentUser.name,
+      author_id: currentUser.id || currentUser.memberId,
+      author_username: currentUser.username,
+      flagged: false,
+      flagged_by: [],
       reactions: {},
       comments: [],
       pinned: false
@@ -98,6 +111,8 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
     const newComment = {
       id: Date.now(),
       name: currentUser.name,
+      author_id: currentUser.id || currentUser.memberId,
+      author_username: currentUser.username,
       text: commentText.trim(),
       date: new Date().toLocaleDateString('en-US', {
         month: 'short',
@@ -105,6 +120,8 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
         hour: '2-digit',
         minute: '2-digit',
       }),
+      flagged: false,
+      flagged_by: []
     };
 
     const updatedComments = [...currentComments, newComment];
@@ -116,6 +133,80 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
       ...prev,
       [id]: !prev[id],
     }));
+  };
+
+  const handleBlockUser = (targetUserId, targetUsername) => {
+    const myId = currentUser.id || currentUser.memberId;
+    if (targetUserId === myId || targetUsername === currentUser.username) {
+      alert("You cannot block yourself!");
+      return;
+    }
+
+    if (confirm(`Are you sure you want to block and mute ${targetUsername || 'this user'}? You will no longer see their announcements or comments.`)) {
+      const updated = [...blockedUsers, targetUserId || targetUsername];
+      setBlockedUsers(updated);
+      localStorage.setItem('sol_blocked_users', JSON.stringify(updated));
+      alert(`You have blocked ${targetUsername || 'this user'}.`);
+    }
+  };
+
+  const handleFlagNotice = (noticeId) => {
+    const notice = announcements.find((a) => a.id === noticeId);
+    if (!notice) return;
+
+    const myId = currentUser.id || currentUser.memberId;
+    const currentFlaggedBy = notice.flagged_by || [];
+    
+    if (currentFlaggedBy.includes(myId)) {
+      alert("You have already reported this notice. Administrators are reviewing it.");
+      return;
+    }
+
+    const updatedFlaggedBy = [...currentFlaggedBy, myId];
+    
+    onUpdateNotice(noticeId, { 
+      flagged: true, 
+      flagged_by: updatedFlaggedBy 
+    });
+
+    alert("Thank you for your report. The administrators have been notified and will review this content within 24 hours. If found objectionable, it will be deleted immediately.");
+  };
+
+  const handleFlagComment = (noticeId, commentId) => {
+    const notice = announcements.find((a) => a.id === noticeId);
+    if (!notice) return;
+
+    const myId = currentUser.id || currentUser.memberId;
+    const updatedComments = (notice.comments || []).map((c) => {
+      if (c.id === commentId) {
+        const commentFlaggedBy = c.flagged_by || [];
+        if (commentFlaggedBy.includes(myId)) {
+          alert("You have already reported this reply. Administrators are reviewing it.");
+          return c;
+        }
+        return {
+          ...c,
+          flagged: true,
+          flagged_by: [...commentFlaggedBy, myId]
+        };
+      }
+      return c;
+    });
+
+    onUpdateNotice(noticeId, { comments: updatedComments });
+    
+    alert("Thank you for your report. The administrators have been notified and will review this content within 24 hours. If found objectionable, it will be deleted immediately.");
+  };
+
+  const handleDeleteComment = (noticeId, commentId) => {
+    if (!confirm("Are you sure you want to permanently delete this reply?")) return;
+    
+    const notice = announcements.find((a) => a.id === noticeId);
+    if (!notice) return;
+
+    const updatedComments = (notice.comments || []).filter((c) => c.id !== commentId);
+    onUpdateNotice(noticeId, { comments: updatedComments });
+    alert("Reply deleted successfully.");
   };
 
   const getCategoryStyles = (cat) => {
@@ -137,7 +228,15 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
   const filteredAnnouncements = announcements.filter((item) => {
     const itemVisibility = item.visibility || 'COMMUNITY_MEMBER';
     const itemLevel = ROLE_LEVELS[itemVisibility] || 1;
-    return userRoleLevel >= itemLevel;
+    if (userRoleLevel < itemLevel) return false;
+
+    // Filter out posts if author is blocked
+    const authorId = item.author_id;
+    const authorUsername = item.author_username;
+    if (blockedUsers.includes(authorId) || (authorUsername && blockedUsers.includes(authorUsername))) {
+      return false;
+    }
+    return true;
   });
 
   return (
@@ -255,10 +354,12 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
           filteredAnnouncements.map((item) => (
             <article
               key={item.id}
-              className="bg-canvas p-6 trail-border trail-shadow rounded-sm relative hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[6px_6px_0px_0px_rgba(28,25,23,1)] transition-all duration-200"
+              className={`p-6 trail-border trail-shadow rounded-sm relative hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[6px_6px_0px_0px_rgba(28,25,23,1)] transition-all duration-200 ${
+                item.flagged ? 'bg-red-50/30 border-red-400 shadow-[6px_6px_0px_0px_rgba(185,28,28,1)]' : 'bg-canvas'
+              }`}
             >
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-stone-200 pb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className={`text-[10px] uppercase font-bold tracking-widest px-2.5 py-0.5 border rounded-full ${getCategoryStyles(item.category)}`}>
                     {item.category}
                   </span>
@@ -268,6 +369,54 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
                   <span className="text-xs text-stone-500 font-medium">
                     {item.date}
                   </span>
+                  <span className="text-xs text-stone-600 font-bold bg-stone-100 px-2 py-0.5 rounded-sm border border-stone-250">
+                    By: {item.author_name || 'School of Life'} {item.author_username && `(@${item.author_username})`}
+                  </span>
+                  
+                  {item.flagged && (
+                    <span className="flex items-center gap-1 text-[10px] uppercase font-black tracking-wider bg-red-100 text-red-700 px-2 py-0.5 border border-red-300 rounded-sm animate-pulse">
+                      <ShieldAlert className="w-3.5 h-3.5" /> Flagged for Review
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* UGC controls for announcement */}
+                  {item.author_id !== (currentUser.id || currentUser.memberId) && (
+                    <>
+                      <button
+                        onClick={() => handleBlockUser(item.author_id, item.author_username || item.author_name)}
+                        title="Block User"
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-bold border border-stone-300 bg-stone-50 text-stone-600 hover:bg-red-50 hover:text-red-600 rounded-sm transition-all cursor-pointer"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Block</span>
+                      </button>
+                      <button
+                        onClick={() => handleFlagNotice(item.id)}
+                        title="Report Content"
+                        className={`flex items-center gap-1 px-2 py-1 text-xs font-bold border rounded-sm transition-all cursor-pointer ${
+                          item.flagged_by?.includes(currentUser.id || currentUser.memberId)
+                            ? 'bg-campfire/10 border-campfire text-campfire'
+                            : 'bg-stone-50 border-stone-300 text-stone-600 hover:bg-stone-100 hover:text-campfire'
+                        }`}
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Report</span>
+                      </button>
+                    </>
+                  )}
+
+                  {role === 'ADMIN' && (
+                    <button
+                      onClick={() => onDeleteNotice && onDeleteNotice(item.id)}
+                      title="Delete Announcement"
+                      className="flex items-center gap-1 px-2 py-1 text-xs font-bold border border-red-900 bg-red-50 text-red-950 hover:bg-red-100 rounded-sm transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  )}
                 </div>
               </div>
               
@@ -323,15 +472,66 @@ export default function NoticeBoard({ announcements, setAnnouncements, onUpdateN
                     <p className="text-xs text-stone-500 italic pl-1">No replies yet. Be the first to reply!</p>
                   ) : (
                     <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1">
-                      {item.comments.map((comment) => (
-                        <div key={comment.id} className="bg-stone-50 p-3 trail-border rounded-sm text-xs flex flex-col gap-1">
-                          <div className="flex items-center justify-between text-stone-500 font-bold">
-                            <span className="text-forest uppercase tracking-wide">{comment.name}</span>
-                            <span className="text-[10px]">{comment.date}</span>
+                      {item.comments
+                        .filter((comment) => {
+                          const commenterId = comment.author_id;
+                          const commenterUsername = comment.author_username;
+                          if (blockedUsers.includes(commenterId) || (commenterUsername && blockedUsers.includes(commenterUsername))) {
+                            return false;
+                          }
+                          return true;
+                        })
+                        .map((comment) => (
+                          <div key={comment.id} className={`p-3 trail-border rounded-sm text-xs flex flex-col gap-1 ${comment.flagged ? 'bg-red-50/50 border-red-300' : 'bg-stone-55'}`}>
+                            <div className="flex items-center justify-between text-stone-500 font-bold mb-1">
+                              <span className="text-forest uppercase tracking-wide">
+                                {comment.name} {comment.author_username && `(@${comment.author_username})`}
+                                {comment.flagged && (
+                                  <span className="ml-2 text-[9px] uppercase font-black text-red-700 bg-red-100 px-1.5 py-0.5 border border-red-200 rounded-sm inline-flex items-center gap-0.5">
+                                    <ShieldAlert className="w-2.5 h-2.5" /> Flagged
+                                  </span>
+                                )}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-stone-400 font-medium">{comment.date}</span>
+                                
+                                {comment.author_id !== (currentUser.id || currentUser.memberId) && (
+                                  <>
+                                    <button
+                                      onClick={() => handleBlockUser(comment.author_id, comment.author_username || comment.name)}
+                                      title="Block User"
+                                      className="text-stone-400 hover:text-red-650 transition-colors p-0.5 cursor-pointer border-none bg-transparent"
+                                    >
+                                      <Ban className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleFlagComment(item.id, comment.id)}
+                                      title="Report Reply"
+                                      className={`transition-colors p-0.5 cursor-pointer border-none bg-transparent ${
+                                        comment.flagged_by?.includes(currentUser.id || currentUser.memberId)
+                                          ? 'text-campfire'
+                                          : 'text-stone-400 hover:text-campfire'
+                                      }`}
+                                    >
+                                      <Flag className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                                
+                                {role === 'ADMIN' && (
+                                  <button
+                                    onClick={() => handleDeleteComment(item.id, comment.id)}
+                                    title="Delete Reply"
+                                    className="text-stone-400 hover:text-red-750 transition-colors p-0.5 cursor-pointer border-none bg-transparent"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-stone-850 font-medium whitespace-pre-wrap">{comment.text}</p>
                           </div>
-                          <p className="text-stone-850 font-medium whitespace-pre-wrap">{comment.text}</p>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
 
