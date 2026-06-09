@@ -20,6 +20,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON public.profiles FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update" ON public.profiles FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON public.profiles FOR DELETE USING (true);
 
 -- 2. ANNOUNCEMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.announcements (
@@ -69,6 +70,7 @@ ALTER TABLE public.badge_data ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read" ON public.badge_data FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON public.badge_data FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update" ON public.badge_data FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON public.badge_data FOR DELETE USING (true);
 
 -- 5. SELF ATTESTED SKILLS TABLE
 CREATE TABLE IF NOT EXISTS public.self_attested (
@@ -80,6 +82,7 @@ ALTER TABLE public.self_attested ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read" ON public.self_attested FOR SELECT USING (true);
 CREATE POLICY "Allow public insert" ON public.self_attested FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update" ON public.self_attested FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete" ON public.self_attested FOR DELETE USING (true);
 
 -- 6. SEED INITIAL USERS DATABASE (For Demo / Login testing)
 INSERT INTO public.profiles (name, member_id, role, status) VALUES 
