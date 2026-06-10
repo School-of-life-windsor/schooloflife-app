@@ -664,9 +664,6 @@ export default function AuthPage({ onLoginSuccess }) {
                 placeholder="••••••••"
                 className="trail-border bg-canvas px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
               />
-              <span className="text-[10px] text-stone-550 font-semibold leading-normal">
-                If using a seeded database account, you can leave the password blank.
-              </span>
             </div>
 
             <button
@@ -757,8 +754,9 @@ export default function AuthPage({ onLoginSuccess }) {
         )}
       </div>
 
-      <div className="mt-8 text-center text-[10px] text-stone-500 font-semibold">
+      <div className="mt-8 text-center text-[10px] text-stone-500 font-semibold flex flex-col gap-1">
         <span>© 2026 School of Life Windsor.</span>
+        <span className="text-forest font-bold">Built for Brotherhood & Sunnah-Centered Skills</span>
       </div>
     </div>
   );
