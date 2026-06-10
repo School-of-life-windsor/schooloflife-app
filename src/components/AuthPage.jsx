@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Compass, UserPlus, LogIn, Lock } from 'lucide-react';
+import { ShieldAlert, UserPlus, LogIn, Lock } from 'lucide-react';
 import { supabase, isConfigured } from '../lib/supabaseClient';
 
 export default function AuthPage({ onLoginSuccess }) {
@@ -462,8 +462,8 @@ export default function AuthPage({ onLoginSuccess }) {
     <div className="min-h-screen bg-canvas flex flex-col items-center justify-center p-4">
       {/* Brand Header */}
       <div className="flex flex-col items-center gap-2 mb-8 text-center">
-        <div className="w-16 h-16 bg-forest text-canvas trail-border trail-shadow rounded-full flex items-center justify-center">
-          <Compass className="w-9 h-9 text-campfire animate-spin-slow" />
+        <div className="w-18 h-18 bg-canvas trail-border trail-shadow rounded-full flex items-center justify-center overflow-hidden">
+          <img src="/favicon.svg" alt="School of Life Logo" className="w-full h-full object-cover" />
         </div>
         <h1 className="font-display font-black text-3xl text-forest uppercase tracking-wider mt-2">
           SCHOOL OF LIFE

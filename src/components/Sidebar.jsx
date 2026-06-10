@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Calendar, Trophy, Shield, Compass, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Calendar, Trophy, Shield, Users, LogOut } from 'lucide-react';
 
 export default function Sidebar({ activeView, setActiveView, role, setRole, user, calculatedRank, onLogout }) {
   const menuItems = [
@@ -23,13 +23,9 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3 bg-forest text-canvas p-3.5 trail-border trail-shadow rounded-sm">
           <div className="flex items-center gap-2">
-            {/* Custom Logo Space Placeholder */}
-            <div className="w-8 h-8 rounded-sm bg-stone-850 border border-dashed border-stone-500 flex items-center justify-center shrink-0">
-              <span className="text-[8px] font-black text-stone-400 tracking-tighter">LOGO</span>
-            </div>
+            <img src="/favicon.svg" alt="School of Life Logo" className="w-8 h-8 rounded-full object-cover border border-stone-900 bg-canvas" />
             <span className="font-display font-black text-sm tracking-wider uppercase">School of Life</span>
           </div>
-          <Compass className="w-6 h-6 text-campfire animate-spin-slow shrink-0" />
         </div>
 
         {/* Role Selector (Quick switch for dev testing) */}

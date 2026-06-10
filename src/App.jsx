@@ -6,7 +6,6 @@ import Logbook from './components/Logbook';
 import UserManagement from './components/UserManagement';
 import AuthPage from './components/AuthPage';
 import { supabase, isConfigured } from './lib/supabaseClient';
-import { Compass } from 'lucide-react';
 
 const initialMembersList = [];
 
