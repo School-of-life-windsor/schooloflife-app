@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS public.badge_data (
 
 ALTER TABLE public.badge_data ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated read" ON public.badge_data FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow owners to initialize badge_data" ON public.badge_data FOR INSERT WITH CHECK (auth.uid() = profile_id OR public.is_admin());
+CREATE POLICY "Allow anyone to initialize badge_data" ON public.badge_data FOR INSERT WITH CHECK (true);
 CREATE POLICY "Only admins can edit badge_data" ON public.badge_data FOR UPDATE USING (public.is_admin());
 CREATE POLICY "Allow owners or admins to delete badge_data" ON public.badge_data FOR DELETE USING (auth.uid() = profile_id OR public.is_admin());
 
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS public.self_attested (
 
 ALTER TABLE public.self_attested ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated read" ON public.self_attested FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow owners to initialize self_attested" ON public.self_attested FOR INSERT WITH CHECK (auth.uid() = profile_id OR public.is_admin());
+CREATE POLICY "Allow anyone to initialize self_attested" ON public.self_attested FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow owners to update self_attested" ON public.self_attested FOR UPDATE USING (auth.uid() = profile_id OR public.is_admin());
 CREATE POLICY "Allow owners or admins to delete self_attested" ON public.self_attested FOR DELETE USING (auth.uid() = profile_id OR public.is_admin());
 
