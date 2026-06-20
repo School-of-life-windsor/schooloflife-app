@@ -218,29 +218,29 @@ export default function AuthPage({ onLoginSuccess }) {
         const isFirstUser = count === 0;
         const initialRole = isFirstUser ? 'ADMIN' : 'COMMUNITY_MEMBER';
 
-        // 3. Insert profile details into public.profiles
-        const { data: newProfile, error: profileErr } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: authData.user.id,
-              name: trimmedName,
-              member_id: generatedMemberId,
-              username: trimmedUsername,
-              email: trimmedEmail,
-              age: parsedAge,
-              waiver_consent: waiverConsent,
-              eula_consent: eulaConsent,
-              role: initialRole,
-              status: 'APPROVED'
-            }
-          ])
-          .select()
-          .single();
+        const profileToInsert = {
+          id: authData.user.id,
+          name: trimmedName,
+          member_id: generatedMemberId,
+          username: trimmedUsername,
+          email: trimmedEmail,
+          age: parsedAge,
+          waiver_consent: waiverConsent,
+          eula_consent: eulaConsent,
+          role: initialRole,
+          status: 'APPROVED'
+        };
 
-        if (profileErr || !newProfile) {
-          throw new Error(profileErr?.message || 'Failed to create profile row');
+        // 3. Insert profile details into public.profiles
+        const { error: profileErr } = await supabase
+          .from('profiles')
+          .insert([profileToInsert]);
+
+        if (profileErr) {
+          throw new Error(profileErr.message);
         }
+
+        const newProfile = profileToInsert;
 
         // 4. Create merit badges row
         await supabase
