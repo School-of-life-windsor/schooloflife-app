@@ -5,6 +5,7 @@ import ExpeditionMap from './components/ExpeditionMap';
 import Logbook from './components/Logbook';
 import UserManagement from './components/UserManagement';
 import AuthPage from './components/AuthPage';
+import SplashScreen from './components/SplashScreen';
 import { supabase, isConfigured } from './lib/supabaseClient';
 
 const initialMembersList = [];
@@ -81,6 +82,7 @@ export default function App() {
   const [badgeData, setBadgeData] = useState({});
   const [selfAttested, setSelfAttested] = useState({});
   const [membersList, setMembersList] = useState([]);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   // Fetch announcements, events, and profiles from Supabase/LocalStorage
   const loadDatabase = async () => {
@@ -205,15 +207,34 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (isConfigured) {
-      // 1. Get initial session
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          fetchProfile(session.user);
+    const initializeAuth = async () => {
+      try {
+        if (isConfigured) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await fetchProfile(session.user);
+          }
+        } else {
+          // LocalStorage fallback session reload
+          const sessionUser = JSON.parse(localStorage.getItem('sol_session') || 'null');
+          if (sessionUser) {
+            setCurrentUser(sessionUser);
+            setRole(sessionUser.role);
+          }
         }
-      });
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        // Guarantee the splash screen dismisses
+        setTimeout(() => {
+          setIsInitializing(false);
+        }, 800); // 800ms minimum display for smooth aesthetic transitions
+      }
+    };
 
-      // 2. Listen for auth changes
+    initializeAuth();
+
+    if (isConfigured) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
           await fetchProfile(session.user);
@@ -224,13 +245,6 @@ export default function App() {
       });
 
       return () => subscription.unsubscribe();
-    } else {
-      // LocalStorage fallback session reload
-      const sessionUser = JSON.parse(localStorage.getItem('sol_session') || 'null');
-      if (sessionUser) {
-        setCurrentUser(sessionUser);
-        setRole(sessionUser.role);
-      }
     }
   }, []);
 
@@ -578,6 +592,11 @@ export default function App() {
         );
     }
   };
+
+  // Show splash screen during initialization
+  if (isInitializing) {
+    return <SplashScreen />;
+  }
 
   // Redirect to AuthPage if user session is empty
   if (!currentUser) {
