@@ -210,12 +210,15 @@ export default function AuthPage({ onLoginSuccess }) {
           throw new Error('User creation failed.');
         }
 
-        // Check if database contains any profiles. If count is 0, this first user becomes ADMIN.
-        const { count } = await supabase
-          .from('profiles')
-          .select('id', { count: 'exact', head: true });
+        // Check if database contains any profiles using a security definer RPC function
+        const { data: isFirstUserResult, error: countErr } = await supabase
+          .rpc('is_first_profile');
+
+        if (countErr) {
+          console.error('Error checking first user:', countErr);
+        }
         
-        const isFirstUser = count === 0;
+        const isFirstUser = isFirstUserResult === true;
         const initialRole = isFirstUser ? 'ADMIN' : 'COMMUNITY_MEMBER';
 
         const profileToInsert = {
