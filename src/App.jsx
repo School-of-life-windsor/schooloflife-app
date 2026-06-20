@@ -663,7 +663,7 @@ export default function App() {
                   School of Life
                 </h3>
                 <p className="text-sm text-stone-300 leading-relaxed font-semibold">
-                  3940 ON-3, Oldcastle, ON N0R 1L0 <br />
+                  1320 Northwood St. Windsor ON N9E 1A4 <br />
                   Windsor Area, Ontario, Canada
                 </p>
               </div>
