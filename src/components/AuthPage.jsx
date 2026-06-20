@@ -596,7 +596,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 className="w-4 h-4 mt-0.5 border-stone-400 rounded-sm cursor-pointer accent-forest focus:ring-campfire"
               />
               <label htmlFor="signup-waiver" className="text-[10px] text-stone-700 font-semibold leading-normal select-none cursor-pointer">
-                I hereby consent to the <span className="font-bold text-campfire underline">School of Life Waiver & Release of Liability</span>, acknowledging the physical requirements and safety procedures of active wilderness programs.
+                I hereby consent to the <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="font-bold text-campfire underline hover:text-opacity-80">School of Life Waiver & Release of Liability</a>, acknowledging the physical requirements and safety procedures of active wilderness programs.
               </label>
             </div>
 
@@ -609,7 +609,7 @@ export default function AuthPage({ onLoginSuccess }) {
                 className="w-4 h-4 mt-0.5 border-stone-400 rounded-sm cursor-pointer accent-forest focus:ring-campfire"
               />
               <label htmlFor="signup-eula" className="text-[10px] text-stone-700 font-semibold leading-normal select-none cursor-pointer">
-                I agree to the <span className="font-bold text-campfire underline">End User License Agreement (EULA)</span> and will not post objectionable, offensive, or abusive content on the platform.
+                I agree to the <a href="/eula.html" target="_blank" rel="noopener noreferrer" className="font-bold text-campfire underline hover:text-opacity-80">End User License Agreement (EULA)</a> and will not post objectionable, offensive, or abusive content on the platform.
               </label>
             </div>
 
@@ -754,9 +754,16 @@ export default function AuthPage({ onLoginSuccess }) {
         )}
       </div>
 
-      <div className="mt-8 text-center text-[10px] text-stone-500 font-semibold flex flex-col gap-1">
+      <div className="mt-8 text-center text-[10px] text-stone-500 font-semibold flex flex-col gap-1.5">
         <span>© 2026 School of Life Windsor.</span>
         <span className="text-forest font-bold">Built for Brotherhood & Sunnah-Centered Skills</span>
+        <div className="flex justify-center gap-3 mt-1 text-stone-400 font-bold uppercase tracking-wider text-[9px]">
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-campfire transition-colors">Privacy Policy</a>
+          <span>•</span>
+          <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="hover:text-campfire transition-colors">Terms & TOS</a>
+          <span>•</span>
+          <a href="/eula.html" target="_blank" rel="noopener noreferrer" className="hover:text-campfire transition-colors">EULA</a>
+        </div>
       </div>
     </div>
   );
