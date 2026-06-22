@@ -175,8 +175,7 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
       {/* ═══════════════════════════════════════════════════════ */}
       {/* Floating Glass Bottom Navigation (Mobile Viewport)    */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <div className="lg:hidden fixed bottom-5 left-4 right-4 mx-auto max-w-md glass-nav px-2 py-2 rounded-2xl flex items-center justify-around z-50"
-           style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      <div className="lg:hidden fixed bottom-3 left-3 right-3 mx-auto max-w-md glass-nav px-3 py-3 rounded-2xl flex items-center justify-around z-50">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
@@ -185,7 +184,7 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
               key={item.id}
               id={`nav-mobile-${item.id.toLowerCase()}`}
               onClick={() => handleNavClick(item.id)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl font-bold text-[9px] uppercase font-display transition-all duration-200 ${
+              className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl font-bold text-[9px] uppercase font-display transition-all duration-200 min-w-[48px] min-h-[48px] justify-center ${
                 isActive
                   ? 'text-campfire'
                   : 'text-stone-400 active:scale-95'
