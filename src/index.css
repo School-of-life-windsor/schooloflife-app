@@ -121,19 +121,16 @@
   animation: fadeOut 0.5s ease-out forwards;
 }
 
-/* ─── Floating Glass Nav Bar ─── */
-.glass-nav {
-  background: rgba(28, 25, 23, 0.88);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.05) inset;
+/* ─── iOS-Native Tab Bar ─── */
+.ios-tab-bar {
+  background: rgba(244, 241, 234, 0.88);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 0.5px solid rgba(0, 0, 0, 0.15);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.glass-nav-active-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #D95D39;
-  margin-top: 3px;
+/* ─── Mobile header safe-area extension ─── */
+.mobile-header-safe {
+  padding-top: env(safe-area-inset-top, 0px);
 }

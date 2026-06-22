@@ -623,11 +623,11 @@ export default function App() {
       />
 
       {/* Main Content Workspace */}
-      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto pb-28 lg:pb-12 flex flex-col justify-between">
+      <main className="flex-1 p-3 md:p-8 lg:p-12 overflow-y-auto pb-18 lg:pb-12">
         
         <div className="w-full">
           {/* Header Ribbon for Active Role — compact on mobile */}
-          <div className="mb-4 md:mb-6 flex items-center justify-between gap-2 bg-stone-100 p-2.5 md:p-4 border-2 border-stone-900 rounded-sm">
+          <div className="mb-3 md:mb-6 flex items-center justify-between gap-2 bg-stone-100 p-2 md:p-4 border-2 border-stone-900 rounded-sm">
             <div className="flex items-center gap-2 text-stone-800 min-w-0">
               <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-forest rounded-full animate-pulse shrink-0"></span>
               <span className="text-[10px] md:text-xs font-black uppercase tracking-wider truncate">
@@ -664,50 +664,6 @@ export default function App() {
             {renderContent()}
           </div>
         </div>
-
-        {/* Footer with Location, Flyer Details & Google Maps Embed */}
-        <footer className="mt-12 pt-8 border-t-4 border-stone-900 flex flex-col gap-6 w-full max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col justify-between bg-stone-800 text-canvas p-6 trail-border trail-shadow rounded-sm">
-              <div>
-                <span className="text-[10px] uppercase tracking-widest text-stone-400 font-bold block mb-1">
-                  Windsor Ontario Canada Headquarters
-                </span>
-                <h3 className="text-xl font-display font-black text-campfire uppercase tracking-wide mb-3">
-                  School of Life
-                </h3>
-                <p className="text-sm text-stone-300 leading-relaxed font-semibold">
-                  1320 Northwood St. Windsor ON N9E 1A4 <br />
-                  Windsor Area, Ontario, Canada
-                </p>
-              </div>
-
-              <div className="mt-6 border-t border-stone-700 pt-4 text-stone-400 text-xs">
-                <span className="block font-bold">📆 Session: July 10 - August 22</span>
-                <span className="block font-bold mt-1 text-campfire">🤝 18+ Brothers Only • Limited Seats</span>
-              </div>
-            </div>
-
-            {/* Embedded Google Maps pin */}
-            <div className="trail-border rounded-sm overflow-hidden h-[220px] relative">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3443.1046579966205!2d-82.95237762357789!3d42.22448634365562!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x883b29a82ed3ebc5%3A0x19fcc9bdfa98015b!2s3940%20ON-3%2C%20Oldcastle%2C%20ON%20N0R%201L0!5e1!3m2!1sen!2sca!4v1780976123207!5m2!1sen!2sca"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen=""
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="School of Life Camp Location Map"
-              ></iframe>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between text-stone-600 text-xs py-4">
-            <span>© 2026 School of Life. Connect with Allah's Creation.</span>
-            <span className="font-bold text-forest mt-2 sm:mt-0">Built for Brotherhood & Sunnah-Centered Skills</span>
-          </div>
-        </footer>
       </main>
     </div>
   );

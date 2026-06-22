@@ -20,10 +20,23 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
   };
 
   return (
-    <aside className="w-full lg:w-76 shrink-0 flex flex-col justify-between bg-stone-100 lg:bg-transparent lg:h-screen lg:sticky lg:top-0 p-4 lg:p-6 border-b-2 lg:border-b-0 lg:border-r-2 border-stone-900 z-40">
+    <aside className="w-full lg:w-76 shrink-0 flex flex-col justify-between bg-stone-100 lg:bg-transparent lg:h-screen lg:sticky lg:top-0 lg:p-6 border-b-2 lg:border-b-0 lg:border-r-2 border-stone-900 z-40">
       {/* Top Brand & Controls */}
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between gap-3 bg-forest text-canvas p-3.5 trail-border trail-shadow rounded-sm">
+      <div className="flex flex-col lg:gap-5">
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* Mobile Header — with safe-area padding for Dynamic Island */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <div className="lg:hidden mobile-header-safe bg-forest">
+          <div className="flex items-center gap-2 px-4 py-2.5 text-canvas">
+            <img src="/favicon.svg" alt="School of Life Logo" className="w-6 h-6 rounded-full object-cover border border-stone-600 bg-canvas" />
+            <span className="font-display font-black text-xs tracking-wider uppercase">School of Life</span>
+          </div>
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* Desktop Header — original trail-guide style */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <div className="hidden lg:flex items-center justify-between gap-3 bg-forest text-canvas p-3.5 trail-border trail-shadow rounded-sm">
           <div className="flex items-center gap-2">
             <img src="/favicon.svg" alt="School of Life Logo" className="w-8 h-8 rounded-full object-cover border border-stone-900 bg-canvas" />
             <span className="font-display font-black text-sm tracking-wider uppercase">School of Life</span>
@@ -32,7 +45,7 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
 
         {/* Role Selector — collapsible on all viewports */}
         {user.role === 'ADMIN' && (
-          <div className="bg-stone-200 trail-border rounded-sm overflow-hidden">
+          <div className="bg-stone-200 trail-border rounded-sm overflow-hidden mx-4 mt-3 lg:mx-0 lg:mt-5">
             <button
               onClick={() => setShowRolePreview(!showRolePreview)}
               className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-stone-300/50 transition-colors"
@@ -100,7 +113,7 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
         )}
 
         {/* Navigation Menu (Hidden on Mobile, shown on Desktop) */}
-        <nav className="hidden lg:flex flex-col gap-3 mt-4">
+        <nav className="hidden lg:flex flex-col gap-3 mt-4 px-0">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
@@ -173,9 +186,9 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* Floating Glass Bottom Navigation (Mobile Viewport)    */}
+      {/* iOS-Native Tab Bar (Mobile Viewport)                  */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <div className="lg:hidden fixed bottom-3 left-3 right-3 mx-auto max-w-md glass-nav px-3 py-3 rounded-2xl flex items-center justify-around z-50">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 ios-tab-bar px-2 pt-1.5 flex items-start justify-around z-50">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
@@ -184,24 +197,27 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
               key={item.id}
               id={`nav-mobile-${item.id.toLowerCase()}`}
               onClick={() => handleNavClick(item.id)}
-              className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl font-bold text-[9px] uppercase font-display transition-all duration-200 min-w-[48px] min-h-[48px] justify-center ${
+              className={`flex flex-col items-center gap-0.5 px-2 py-1 min-w-[48px] min-h-[48px] justify-center transition-colors duration-150 ${
                 isActive
-                  ? 'text-campfire'
-                  : 'text-stone-400 active:scale-95'
+                  ? 'text-forest'
+                  : 'text-stone-400 active:text-stone-600'
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-campfire' : ''}`} />
-              {isActive && <div className="glass-nav-active-dot" />}
+              <Icon className="w-[22px] h-[22px]" strokeWidth={isActive ? 2.2 : 1.8} />
+              <span className={`text-[10px] leading-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+                {item.shortLabel}
+              </span>
             </button>
           );
         })}
         
-        {/* Logout Button (Mobile Bottom Bar) */}
+        {/* Logout Tab Item */}
         <button
           onClick={onLogout}
-          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl font-bold text-[9px] uppercase font-display text-stone-500 active:scale-95 transition-all duration-200 cursor-pointer"
+          className="flex flex-col items-center gap-0.5 px-2 py-1 min-w-[56px] text-stone-400 active:text-stone-600 transition-colors duration-150"
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-[22px] h-[22px]" strokeWidth={1.8} />
+          <span className="text-[10px] font-medium leading-tight">Exit</span>
         </button>
       </div>
     </aside>
