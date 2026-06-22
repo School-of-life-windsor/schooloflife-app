@@ -83,6 +83,7 @@ export default function App() {
   const [selfAttested, setSelfAttested] = useState({});
   const [membersList, setMembersList] = useState([]);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isSplashFadingOut, setIsSplashFadingOut] = useState(false);
 
   // Fetch announcements, events, and profiles from Supabase/LocalStorage
   const loadDatabase = async () => {
@@ -225,10 +226,14 @@ export default function App() {
       } catch (err) {
         console.error('Auth initialization error:', err);
       } finally {
-        // Guarantee the splash screen dismisses
+        // Display splash for 3 seconds, then fade out over 0.5s before unmounting
         setTimeout(() => {
-          setIsInitializing(false);
-        }, 800); // 800ms minimum display for smooth aesthetic transitions
+          setIsSplashFadingOut(true);
+          setTimeout(() => {
+            setIsInitializing(false);
+            setIsSplashFadingOut(false);
+          }, 500); // fade-out animation duration
+        }, 3000); // 3s splash display
       }
     };
 
@@ -595,7 +600,7 @@ export default function App() {
 
   // Show splash screen during initialization
   if (isInitializing) {
-    return <SplashScreen />;
+    return <SplashScreen fadingOut={isSplashFadingOut} />;
   }
 
   // Redirect to AuthPage if user session is empty
@@ -618,33 +623,23 @@ export default function App() {
       />
 
       {/* Main Content Workspace */}
-      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto pb-24 lg:pb-12 flex flex-col justify-between">
+      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto pb-28 lg:pb-12 flex flex-col justify-between">
         
         <div className="w-full">
-          {/* Header Ribbon for Active Role */}
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 bg-stone-100 p-4 border-2 border-stone-900 rounded-sm">
-            <div className="flex items-center gap-2 text-stone-800">
-              <span className="w-2.5 h-2.5 bg-forest rounded-full animate-pulse"></span>
-              <span className="text-xs font-black uppercase tracking-wider">
-                Active Status: {
-                  role === 'ADMIN' ? 'Leader / Instructor (Admin)' :
-                  role === 'VOLUNTEER' ? 'Leadership / Volunteer' :
-                  role === 'CORE_MEMBER' ? 'Core Member' : 'Community Member'
+          {/* Header Ribbon for Active Role — compact on mobile */}
+          <div className="mb-4 md:mb-6 flex items-center justify-between gap-2 bg-stone-100 p-2.5 md:p-4 border-2 border-stone-900 rounded-sm">
+            <div className="flex items-center gap-2 text-stone-800 min-w-0">
+              <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-forest rounded-full animate-pulse shrink-0"></span>
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-wider truncate">
+                {
+                  role === 'ADMIN' ? 'Admin' :
+                  role === 'VOLUNTEER' ? 'Volunteer' :
+                  role === 'CORE_MEMBER' ? 'Core' : 'Member'
                 }
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert("Zeffy Registration Link: Coming Soon!");
-                }}
-                className="lg:hidden px-3 py-1.5 text-[10px] font-black uppercase bg-campfire text-canvas rounded-sm hover:bg-opacity-90 transition-all trail-border trail-shadow-sm mr-2"
-              >
-                Buy Membership ($150.00)
-              </a>
+            <div className="hidden lg:flex items-center gap-2">
               {currentUser.role === 'ADMIN' && (
                 <>
                   <span className="text-[10px] uppercase font-bold text-stone-500">Quick Switcher:</span>

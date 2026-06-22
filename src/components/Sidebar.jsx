@@ -1,16 +1,18 @@
-import React from 'react';
-import { LayoutDashboard, Calendar, Trophy, Shield, Users, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { LayoutDashboard, Calendar, Trophy, Shield, Users, LogOut, ChevronDown, Eye } from 'lucide-react';
 
 export default function Sidebar({ activeView, setActiveView, role, setRole, user, calculatedRank, onLogout }) {
+  const [showRolePreview, setShowRolePreview] = useState(false);
+
   const menuItems = [
-    { id: 'Dashboard', label: 'Notice Board', icon: LayoutDashboard },
-    { id: 'Events', label: 'Expedition Map', icon: Calendar },
-    { id: 'Badges', label: 'Logbook', icon: Trophy },
+    { id: 'Dashboard', label: 'Notice Board', icon: LayoutDashboard, shortLabel: 'Board' },
+    { id: 'Events', label: 'Expedition Map', icon: Calendar, shortLabel: 'Map' },
+    { id: 'Badges', label: 'Logbook', icon: Trophy, shortLabel: 'Log' },
   ];
 
   // Admins can see the User Directory panel
   if (role === 'ADMIN') {
-    menuItems.push({ id: 'UserManagement', label: 'User Directory', icon: Users });
+    menuItems.push({ id: 'UserManagement', label: 'User Directory', icon: Users, shortLabel: 'Users' });
   }
 
   const handleNavClick = (viewId) => {
@@ -28,60 +30,72 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
           </div>
         </div>
 
-        {/* Role Selector (Quick switch for dev testing) */}
+        {/* Role Selector — collapsible on all viewports */}
         {user.role === 'ADMIN' && (
-          <div className="bg-stone-200 p-2 trail-border rounded-sm flex flex-col gap-1.5">
-            <span className="text-[9px] uppercase font-black text-stone-500 tracking-wider">Preview Role clearance:</span>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                id="role-member-toggle"
-                onClick={() => setRole('COMMUNITY_MEMBER')}
-                className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
-                  role === 'COMMUNITY_MEMBER' || role === 'MEMBER'
-                    ? 'bg-forest text-canvas border-forest shadow-sm'
-                    : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
-                }`}
-                title="Community Member"
-              >
-                Community
-              </button>
-              <button
-                id="role-core-toggle"
-                onClick={() => setRole('CORE_MEMBER')}
-                className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
-                  role === 'CORE_MEMBER'
-                    ? 'bg-forest text-canvas border-forest shadow-sm'
-                    : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
-                }`}
-                title="Core Member"
-              >
-                Core
-              </button>
-              <button
-                id="role-volunteer-toggle"
-                onClick={() => setRole('VOLUNTEER')}
-                className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
-                  role === 'VOLUNTEER'
-                    ? 'bg-forest text-canvas border-forest shadow-sm'
-                    : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
-                }`}
-                title="Volunteer"
-              >
-                Volunteer
-              </button>
-              <button
-                id="role-admin-toggle"
-                onClick={() => setRole('ADMIN')}
-                className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
-                  role === 'ADMIN'
-                    ? 'bg-campfire text-canvas border-campfire shadow-sm'
-                    : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
-                }`}
-                title="Admin"
-              >
-                Admin
-              </button>
-            </div>
+          <div className="bg-stone-200 trail-border rounded-sm overflow-hidden">
+            <button
+              onClick={() => setShowRolePreview(!showRolePreview)}
+              className="w-full flex items-center justify-between p-2 cursor-pointer hover:bg-stone-300/50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <Eye className="w-3 h-3 text-stone-500" />
+                <span className="text-[9px] uppercase font-black text-stone-500 tracking-wider">Preview Role Clearance</span>
+              </div>
+              <ChevronDown className={`w-3 h-3 text-stone-500 transition-transform duration-200 ${showRolePreview ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showRolePreview && (
+              <div className="grid grid-cols-2 gap-1.5 px-2 pb-2">
+                <button
+                  id="role-member-toggle"
+                  onClick={() => setRole('COMMUNITY_MEMBER')}
+                  className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
+                    role === 'COMMUNITY_MEMBER' || role === 'MEMBER'
+                      ? 'bg-forest text-canvas border-forest shadow-sm'
+                      : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
+                  }`}
+                  title="Community Member"
+                >
+                  Community
+                </button>
+                <button
+                  id="role-core-toggle"
+                  onClick={() => setRole('CORE_MEMBER')}
+                  className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
+                    role === 'CORE_MEMBER'
+                      ? 'bg-forest text-canvas border-forest shadow-sm'
+                      : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
+                  }`}
+                  title="Core Member"
+                >
+                  Core
+                </button>
+                <button
+                  id="role-volunteer-toggle"
+                  onClick={() => setRole('VOLUNTEER')}
+                  className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
+                    role === 'VOLUNTEER'
+                      ? 'bg-forest text-canvas border-forest shadow-sm'
+                      : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
+                  }`}
+                  title="Volunteer"
+                >
+                  Volunteer
+                </button>
+                <button
+                  id="role-admin-toggle"
+                  onClick={() => setRole('ADMIN')}
+                  className={`text-[9px] text-center py-1 font-black uppercase transition-all border rounded-sm truncate ${
+                    role === 'ADMIN'
+                      ? 'bg-campfire text-canvas border-campfire shadow-sm'
+                      : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
+                  }`}
+                  title="Admin"
+                >
+                  Admin
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -158,8 +172,11 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
         </button>
       </div>
 
-      {/* Bottom Navigation (Mobile Viewport) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-stone-100 border-t-4 border-stone-900 px-4 py-2 flex items-center justify-around z-50">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* Floating Glass Bottom Navigation (Mobile Viewport)    */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <div className="lg:hidden fixed bottom-5 left-4 right-4 mx-auto max-w-md glass-nav px-2 py-2 rounded-2xl flex items-center justify-around z-50"
+           style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
@@ -168,25 +185,24 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
               key={item.id}
               id={`nav-mobile-${item.id.toLowerCase()}`}
               onClick={() => handleNavClick(item.id)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase font-display border-2 transition-all ${
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl font-bold text-[9px] uppercase font-display transition-all duration-200 ${
                 isActive
-                  ? 'bg-campfire text-canvas border-stone-900 trail-shadow-sm'
-                  : 'border-transparent text-stone-600'
+                  ? 'text-campfire'
+                  : 'text-stone-400 active:scale-95'
               }`}
             >
-              <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
+              <Icon className={`w-5 h-5 ${isActive ? 'text-campfire' : ''}`} />
+              {isActive && <div className="glass-nav-active-dot" />}
             </button>
           );
         })}
         
-        {/* Logout Button (Mobile Bottom Bar Shortcut) */}
+        {/* Logout Button (Mobile Bottom Bar) */}
         <button
           onClick={onLogout}
-          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase font-display border-2 border-transparent text-stone-600 cursor-pointer"
+          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl font-bold text-[9px] uppercase font-display text-stone-500 active:scale-95 transition-all duration-200 cursor-pointer"
         >
-          <LogOut className="w-5 h-5 text-stone-500" />
-          <span>Exit</span>
+          <LogOut className="w-5 h-5" />
         </button>
       </div>
     </aside>

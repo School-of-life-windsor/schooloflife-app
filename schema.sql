@@ -37,6 +37,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Resolve login identifier (username or member_id) to email, usable by anon role
+CREATE OR REPLACE FUNCTION public.resolve_login_identifier(identifier text)
+RETURNS text AS $$
+DECLARE
+  resolved_email text;
+BEGIN
+  SELECT email INTO resolved_email
+  FROM public.profiles
+  WHERE username ILIKE identifier OR member_id ILIKE identifier
+  LIMIT 1;
+  
+  RETURN resolved_email;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.resolve_login_identifier(text) TO anon, authenticated;
+
+-- Check if this is the first profile being created (for auto-admin assignment)
+CREATE OR REPLACE FUNCTION public.is_first_profile()
+RETURNS boolean AS $$
+BEGIN
+  RETURN NOT EXISTS (SELECT 1 FROM public.profiles LIMIT 1);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow authenticated read" ON public.profiles FOR SELECT USING (auth.role() = 'authenticated');

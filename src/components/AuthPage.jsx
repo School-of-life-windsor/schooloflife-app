@@ -49,19 +49,15 @@ export default function AuthPage({ onLoginSuccess }) {
 
         // If user logged in using username or member ID, resolve it to their email
         if (!identifier.includes('@')) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email')
-            .or(`member_id.ilike.${identifier},username.ilike.${identifier}`)
-            .maybeSingle();
+          const { data: resolvedEmail, error: resolveErr } = await supabase
+            .rpc('resolve_login_identifier', { identifier });
 
-          if (profile && profile.email) {
-            emailToAuthenticate = profile.email;
-          } else {
+          if (resolveErr || !resolvedEmail) {
             setStatusMessage('User profile not found. Verify your identifier or register below.');
             setStatusType('error');
             return;
           }
+          emailToAuthenticate = resolvedEmail;
         }
 
         // Authenticate with Supabase Auth
