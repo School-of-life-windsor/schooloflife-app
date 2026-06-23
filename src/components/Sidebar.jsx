@@ -36,7 +36,7 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
         {/* ═══════════════════════════════════════════════════════ */}
         <div className="lg:hidden mobile-header-safe bg-forest">
           <div className="flex items-center gap-2 px-4 py-2.5 text-canvas">
-            <img src="/favicon.svg" alt="School of Life Logo" className="w-6 h-6 rounded-full object-cover border border-stone-600 bg-canvas" />
+            <img src="/logo.png" alt="School of Life Logo" className="w-6 h-6 rounded-full object-cover border border-stone-600 bg-canvas" />
             <span className="font-display font-black text-xs tracking-wider uppercase">School of Life</span>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
         {/* ═══════════════════════════════════════════════════════ */}
         <div className="hidden lg:flex items-center justify-between gap-3 bg-forest text-canvas p-3.5 trail-border trail-shadow rounded-sm">
           <div className="flex items-center gap-2">
-            <img src="/favicon.svg" alt="School of Life Logo" className="w-8 h-8 rounded-full object-cover border border-stone-900 bg-canvas" />
+            <img src="/logo.png" alt="School of Life Logo" className="w-8 h-8 rounded-full object-cover border border-stone-900 bg-canvas" />
             <span className="font-display font-black text-sm tracking-wider uppercase">School of Life</span>
           </div>
         </div>
