@@ -108,22 +108,22 @@ export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelf
   return (
     <section className="flex flex-col gap-6 w-full max-w-4xl mx-auto pb-16">
       {/* Title Header */}
-      <div className="flex items-center justify-between border-b-4 border-stone-900 pb-3">
-        <div className="flex items-center gap-3">
-          <Trophy className="w-8 h-8 text-forest" />
-          <div>
-            <h1 className="text-3xl font-display font-black tracking-tight text-forest m-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-4 border-stone-900 pb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Trophy className="w-8 h-8 text-forest shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-forest m-0 truncate">
               THE LOGBOOK
             </h1>
-            <p className="text-stone-600 text-sm">
+            <p className="text-stone-600 text-xs sm:text-sm truncate">
               Official merit badges, requirements tracking, and progress metrics.
             </p>
           </div>
         </div>
 
         {/* Scout Selector */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="scout-select" className="text-xs font-black uppercase text-stone-900 flex items-center gap-1">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start bg-stone-100/50 p-2 sm:p-0 rounded-sm sm:bg-transparent border border-stone-300 sm:border-none">
+          <label htmlFor="scout-select" className="text-[10px] sm:text-xs font-black uppercase text-stone-900 flex items-center gap-1 shrink-0">
             <User className="w-3.5 h-3.5 text-campfire" /> Brother:
           </label>
           {role === 'ADMIN' ? (
@@ -131,7 +131,7 @@ export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelf
               id="scout-select"
               value={selectedScoutId}
               onChange={(e) => setSelectedScoutId(e.target.value)}
-              className="trail-border bg-canvas px-3 py-1.5 text-xs font-bold uppercase focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+              className="trail-border bg-canvas px-2.5 py-1.5 text-xs font-bold uppercase focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm max-w-[180px] sm:max-w-[220px] truncate"
             >
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -140,7 +140,7 @@ export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelf
               ))}
             </select>
           ) : (
-            <span className="bg-stone-200 border-2 border-stone-800 text-stone-800 px-3 py-1 text-xs font-black uppercase rounded-sm">
+            <span className="bg-stone-200 border-2 border-stone-800 text-stone-800 px-3 py-1 text-xs font-black uppercase rounded-sm truncate">
               {currentUser.name}
             </span>
           )}
