@@ -121,12 +121,12 @@ export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelf
           </div>
         </div>
 
-        {/* Scout Selector */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start bg-stone-100/50 p-2 sm:p-0 rounded-sm sm:bg-transparent border border-stone-300 sm:border-none">
-          <label htmlFor="scout-select" className="text-[10px] sm:text-xs font-black uppercase text-stone-900 flex items-center gap-1 shrink-0">
-            <User className="w-3.5 h-3.5 text-campfire" /> Brother:
-          </label>
-          {role === 'ADMIN' ? (
+        {/* Scout Selector — Admins only */}
+        {role === 'ADMIN' && (
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start bg-stone-100/50 p-2 sm:p-0 rounded-sm sm:bg-transparent border border-stone-300 sm:border-none">
+            <label htmlFor="scout-select" className="text-[10px] sm:text-xs font-black uppercase text-stone-900 flex items-center gap-1 shrink-0">
+              <User className="w-3.5 h-3.5 text-campfire" /> Brother:
+            </label>
             <select
               id="scout-select"
               value={selectedScoutId}
@@ -139,12 +139,8 @@ export default function Logbook({ badgeData, setBadgeData, selfAttested, setSelf
                 </option>
               ))}
             </select>
-          ) : (
-            <span className="bg-stone-200 border-2 border-stone-800 text-stone-800 px-3 py-1 text-xs font-black uppercase rounded-sm truncate">
-              {currentUser.name}
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Scout Info Tag with Ranks */}

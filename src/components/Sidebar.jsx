@@ -127,7 +127,7 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
       {/* ═══════════════════════════════════════════════════════ */}
       {/* Floating Pill Tab Bar (Mobile Viewport)                 */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <div className="lg:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-4 right-4 max-w-md mx-auto ios-tab-bar-pill flex items-center justify-around z-50">
+      <div className="lg:hidden fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] left-4 right-4 max-w-md mx-auto ios-tab-bar-pill flex items-center justify-around z-50">
         {mobileMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
