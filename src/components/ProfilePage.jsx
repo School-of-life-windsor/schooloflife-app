@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Shield, Key, Eye, HelpCircle, FileText, AlertTriangle, LogOut, ChevronDown, Check, Edit2, Users } from 'lucide-react';
+import { User, Shield, Key, Eye, HelpCircle, FileText, AlertTriangle, LogOut, ChevronDown, Check, Edit2, Users, ChevronRight, ArrowLeft, Bell } from 'lucide-react';
 
 export default function ProfilePage({
   role,
@@ -10,39 +10,83 @@ export default function ProfilePage({
   onLogout,
   setActiveView
 }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(currentUser.name || '');
-  const [username, setUsername] = useState(currentUser.username || '');
-  const [age, setAge] = useState(currentUser.age || '');
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // Accordion states
+  // Settings form states
+  const [name, setName] = useState(currentUser.name || '');
+  const [username, setUsername] = useState(currentUser.username || '');
+  const [age, setAge] = useState(currentUser.age || '');
+  const [email, setEmail] = useState(currentUser.email || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Accordions on main profile screen
   const [showRolePreview, setShowRolePreview] = useState(false);
   const [showTOS, setShowTOS] = useState(false);
   const [showWaiver, setShowWaiver] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Notification state
+  const [notificationPermission, setNotificationPermission] = useState(
+    'Notification' in window ? Notification.permission : 'default'
+  );
 
   const calculatedRank = currentUser.rank || 'Tenderfoot';
 
-  const handleSave = async (e) => {
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      alert("This device does not support push notifications.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+    if (permission === 'granted') {
+      alert("Notification alerts enabled successfully!");
+    } else {
+      alert("Notification permissions denied.");
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
     setIsSaving(true);
     setMessage({ type: '', text: '' });
+
+    if (password && password !== confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match.' });
+      setIsSaving(false);
+      return;
+    }
+
     try {
-      await onUpdateCurrentUser({
+      const fieldsToUpdate = {
         name,
         username,
-        age: age ? parseInt(age, 10) : null
-      });
-      setMessage({ type: 'success', text: 'Profile updated successfully!' });
-      setIsEditing(false);
+        age: age ? parseInt(age, 10) : null,
+        email
+      };
+
+      if (password) {
+        fieldsToUpdate.password = password;
+      }
+
+      await onUpdateCurrentUser(fieldsToUpdate);
+      setMessage({ type: 'success', text: 'Account settings saved successfully!' });
+      setPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setShowAccountSettings(false), 800);
     } catch (err) {
       console.error(err);
-      setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
+      setMessage({ type: 'error', text: 'Failed to update settings. Please check your inputs.' });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDelete = () => {
+    const userId = currentUser.id || currentUser.memberId || currentUser.member_id;
+    onDeleteAccount(userId);
   };
 
   const handleToggleWaiver = async () => {
@@ -59,13 +103,182 @@ export default function ProfilePage({
     }
   };
 
-  const handleDelete = () => {
-    const userId = currentUser.id || currentUser.memberId || currentUser.member_id;
-    onDeleteAccount(userId);
-  };
+  // ════════════════════════════════════════════════════════════════════════
+  // Sub-View: Account Settings Page
+  // ════════════════════════════════════════════════════════════════════════
+  if (showAccountSettings) {
+    return (
+      <section className="flex flex-col gap-6 w-full max-w-xl mx-auto pb-24 animate-fade-in">
+        {/* Sub-Header */}
+        <div className="flex items-center gap-3 border-b-4 border-stone-900 pb-3">
+          <button
+            onClick={() => {
+              setShowAccountSettings(false);
+              setMessage({ type: '', text: '' });
+            }}
+            className="p-1 hover:bg-stone-200 rounded-full transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-6 h-6 text-stone-900" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-display font-black tracking-tight text-forest m-0 uppercase">
+              Account Settings
+            </h1>
+            <p className="text-stone-600 text-xs font-semibold">
+              Edit your name, login identifiers, contact email, and credentials.
+            </p>
+          </div>
+        </div>
 
+        {message.text && (
+          <div
+            className={`p-3 trail-border rounded-sm text-xs font-bold uppercase ${
+              message.type === 'success'
+                ? 'bg-emerald-50 border-emerald-800 text-emerald-950'
+                : 'bg-red-50 border-red-900 text-red-950'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handleSaveSettings} className="bg-stone-100 p-6 trail-border trail-shadow rounded-sm flex flex-col gap-4">
+          <div>
+            <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Full Name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Username</label>
+            <input
+              type="text"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Age</label>
+              <input
+                type="number"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="Age"
+                className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Member ID (Static)</label>
+              <input
+                type="text"
+                disabled
+                value={currentUser.member_id || currentUser.memberId || ''}
+                className="w-full bg-stone-200 border-2 border-stone-300 p-2 text-xs font-bold rounded-sm text-stone-500 cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Email Address</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+            />
+          </div>
+
+          <div className="border-t border-stone-300 pt-4 mt-2">
+            <h4 className="font-display font-extrabold text-xs uppercase text-stone-850 mb-3 flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-campfire" /> Reset Password
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[9px] uppercase font-black text-stone-600 mb-1">New Password</label>
+                <input
+                  type="password"
+                  placeholder="Leave blank to keep same"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] uppercase font-black text-stone-600 mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  placeholder="Leave blank to keep same"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAccountSettings(false);
+                setMessage({ type: '', text: '' });
+              }}
+              className="bg-stone-300 text-stone-750 px-4 py-2 text-xs font-black uppercase rounded-sm cursor-pointer hover:bg-stone-400 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="bg-campfire text-canvas px-5 py-2 text-xs font-black uppercase trail-border rounded-sm cursor-pointer hover:shadow-sm transition-all"
+            >
+              {isSaving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+        </form>
+
+        {/* Delete Account (Unified Compliance Section) */}
+        <div className="bg-red-55/60 border-2 border-red-900/40 rounded-sm p-5 mt-4 flex flex-col gap-3 trail-shadow">
+          <div className="flex items-center gap-2 text-red-900">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <h3 className="text-sm font-display font-extrabold uppercase m-0">
+              Delete Account
+            </h3>
+          </div>
+          <p className="text-xs text-red-950 font-bold leading-relaxed m-0">
+            Deleting your account will permanently wipe your profile record, merit badge achievements, and self-attested growth logs. This action is irreversible.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Are you absolutely certain you want to permanently delete your School of Life account? All badges, progress, and account access will be erased immediately. This cannot be undone.")) {
+                handleDelete();
+              }
+            }}
+            className="w-fit bg-red-700 text-canvas px-4 py-2 text-xs font-black uppercase rounded-sm hover:bg-red-800 transition-colors cursor-pointer border border-red-900 trail-shadow-sm active:translate-y-[1px] active:shadow-none"
+          >
+            Permanently Delete Account
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Main Profile Screen
+  // ════════════════════════════════════════════════════════════════════════
   return (
-    <section className="flex flex-col gap-6 w-full max-w-4xl mx-auto pb-20 animate-fade-in">
+    <section className="flex flex-col gap-6 w-full max-w-4xl mx-auto pb-24 animate-fade-in">
       {/* Title */}
       <div className="flex items-center gap-3 border-b-4 border-stone-900 pb-3">
         <User className="w-8 h-8 text-forest shrink-0" />
@@ -81,162 +294,95 @@ export default function ProfilePage({
 
       {message.text && (
         <div
-          className={`p-3 trail-border rounded-sm text-xs font-bold uppercase ${
-            message.type === 'success'
-              ? 'bg-emerald-50 border-emerald-800 text-emerald-950'
-              : 'bg-red-50 border-red-900 text-red-950'
-          }`}
+          className={`p-3 trail-border rounded-sm text-xs font-bold uppercase bg-emerald-50 border-emerald-800 text-emerald-950`}
         >
           {message.text}
         </div>
       )}
 
-      {/* Grid: Profile Card + Edit Profile Form */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Membership Details Card */}
+      <div className="bg-gradient-to-br from-stone-850 to-stone-900 text-canvas p-6 trail-border trail-shadow rounded-sm relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-campfire/15 rounded-full blur-2xl pointer-events-none"></div>
+        <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-forest/20 rounded-full blur-xl pointer-events-none"></div>
         
-        {/* Membership Details Card */}
-        <div className="bg-gradient-to-br from-stone-800 to-stone-900 text-canvas p-6 trail-border trail-shadow rounded-sm relative overflow-hidden flex flex-col justify-between h-fit min-h-[220px]">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-campfire/15 rounded-full blur-2xl pointer-events-none"></div>
-          <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-forest/20 rounded-full blur-xl pointer-events-none"></div>
-          
-          <div className="flex justify-between items-start mb-4 z-10">
-            <div className="flex flex-col">
-              <span className="text-[10px] tracking-widest text-stone-400 uppercase font-black">School of Life</span>
-              <span className="font-display font-black text-sm text-campfire tracking-wide uppercase">Brotherhood Membership</span>
-            </div>
-            <Shield className="w-6 h-6 text-campfire shrink-0" />
+        <div className="flex justify-between items-start mb-4 z-10">
+          <div className="flex flex-col">
+            <span className="text-[10px] tracking-widest text-stone-400 uppercase font-black">School of Life</span>
+            <span className="font-display font-black text-sm text-campfire tracking-wide uppercase">Brotherhood Membership</span>
           </div>
+          <Shield className="w-6 h-6 text-campfire shrink-0" />
+        </div>
 
-          <div className="my-6 z-10">
-            <h4 className="font-display font-extrabold text-lg tracking-wide uppercase text-canvas">
-              {currentUser.name}
-            </h4>
-            <div className="grid grid-cols-2 gap-2 mt-3 text-xs text-stone-300">
-              <div>
-                <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Member ID</span>
-                <span className="font-mono font-bold text-stone-105">{currentUser.member_id || currentUser.memberId}</span>
-              </div>
-              <div>
-                <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Clearance Level</span>
-                <span className="font-mono font-bold text-stone-105">
-                  {role === 'ADMIN' ? 'Admin' :
-                   role === 'VOLUNTEER' ? 'Volunteer' :
-                   role === 'CORE_MEMBER' ? 'Core Member' : 'Community Member'}
-                </span>
-              </div>
-              <div className="col-span-2 mt-1">
-                <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Email Address</span>
-                <span className="font-mono truncate block text-stone-105">{currentUser.email || 'No email bound'}</span>
-              </div>
+        <div className="my-6 z-10">
+          <h4 className="font-display font-extrabold text-lg tracking-wide uppercase text-canvas">
+            {currentUser.name}
+          </h4>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs text-stone-300">
+            <div>
+              <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Member ID</span>
+              <span className="font-mono font-bold text-stone-100">{currentUser.member_id || currentUser.memberId}</span>
             </div>
-          </div>
-
-          <div className="flex justify-between items-center mt-2 border-t border-stone-700/60 pt-4 z-10">
-            <span className="text-xs font-bold text-stone-400">Calculated Rank:</span>
-            <span className="bg-stone-700 px-3 py-1 rounded-sm text-xs font-black uppercase text-canvas border border-stone-600">
-              {calculatedRank}
-            </span>
+            <div>
+              <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Clearance Level</span>
+              <span className="font-mono font-bold text-stone-100">
+                {role === 'ADMIN' ? 'Admin' :
+                 role === 'VOLUNTEER' ? 'Volunteer' :
+                 role === 'CORE_MEMBER' ? 'Core Member' : 'Community Member'}
+              </span>
+            </div>
+            <div className="col-span-2 mt-1">
+              <span className="text-[9px] uppercase tracking-wider text-stone-400 block font-bold">Email Address</span>
+              <span className="font-mono truncate block text-stone-100">{currentUser.email || 'No email bound'}</span>
+            </div>
           </div>
         </div>
 
-        {/* Account Details Settings form */}
-        <div className="bg-stone-100 p-6 trail-border trail-shadow rounded-sm">
-          <div className="flex items-center justify-between border-b border-stone-300 pb-2 mb-4">
-            <div className="flex items-center gap-2">
-              <Key className="w-5 h-5 text-forest shrink-0" />
-              <h3 className="text-base font-display font-extrabold uppercase text-stone-900 m-0">
-                Account Details
-              </h3>
-            </div>
-            {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1 bg-stone-900 text-canvas px-2.5 py-1 text-[10px] font-black uppercase rounded-sm cursor-pointer hover:bg-campfire transition-colors"
-              >
-                <Edit2 className="w-3 h-3" /> Edit
-              </button>
-            )}
-          </div>
-
-          {isEditing ? (
-            <form onSubmit={handleSave} className="flex flex-col gap-3">
-              <div>
-                <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Username</label>
-                <input
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] uppercase font-black text-stone-600 mb-1">Age</label>
-                <input
-                  type="number"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  placeholder="e.g. 24"
-                  className="w-full bg-canvas border-2 border-stone-900 p-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-campfire rounded-sm"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end mt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setName(currentUser.name || '');
-                    setUsername(currentUser.username || '');
-                    setAge(currentUser.age || '');
-                  }}
-                  className="bg-stone-300 text-stone-750 px-3 py-1.5 text-xs font-black uppercase rounded-sm cursor-pointer hover:bg-stone-400 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="bg-campfire text-canvas px-4 py-1.5 text-xs font-black uppercase trail-border rounded-sm cursor-pointer hover:shadow-sm transition-all"
-                >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="flex flex-col gap-3.5">
-              <div className="border-b border-stone-200 pb-2">
-                <span className="block text-[9px] uppercase font-bold text-stone-500">Name</span>
-                <span className="text-sm font-bold text-stone-850">{currentUser.name || 'Not Specified'}</span>
-              </div>
-              <div className="border-b border-stone-200 pb-2">
-                <span className="block text-[9px] uppercase font-bold text-stone-500">Username</span>
-                <span className="text-sm font-bold text-stone-850">{currentUser.username || 'Not Specified'}</span>
-              </div>
-              <div className="border-b border-stone-200 pb-2">
-                <span className="block text-[9px] uppercase font-bold text-stone-500">Age</span>
-                <span className="text-sm font-bold text-stone-850">{currentUser.age ? `${currentUser.age} years old` : 'Not Specified'}</span>
-              </div>
-            </div>
-          )}
+        <div className="flex justify-between items-center mt-2 border-t border-stone-700/60 pt-4 z-10">
+          <span className="text-xs font-bold text-stone-400">Calculated Rank:</span>
+          <span className="bg-stone-700 px-3 py-1 rounded-sm text-xs font-black uppercase text-canvas border border-stone-600">
+            {calculatedRank}
+          </span>
         </div>
       </div>
 
-      {/* Admin Action Buttons & Role Preview Section */}
+      {/* Account Settings Sub-Page Tab Row */}
+      <button
+        onClick={() => setShowAccountSettings(true)}
+        className="flex items-center justify-between w-full p-4 bg-stone-100 hover:bg-stone-200 transition-all trail-border trail-shadow rounded-sm cursor-pointer hover:translate-x-[1px] hover:translate-y-[1px]"
+      >
+        <div className="flex items-center gap-2.5">
+          <Key className="w-5 h-5 text-forest shrink-0" />
+          <span className="font-display font-black uppercase text-stone-900 text-sm">Account Details & Password Settings</span>
+        </div>
+        <ChevronRight className="w-5 h-5 text-stone-700 shrink-0" />
+      </button>
+
+      {/* Notifications Toggle row */}
+      <div className="flex items-center justify-between p-4 bg-[#EAE6DF] trail-border trail-shadow rounded-sm">
+        <div className="flex items-center gap-2.5 pr-2">
+          <Bell className="w-5 h-5 text-forest shrink-0" />
+          <div className="text-left">
+            <span className="font-display font-black uppercase text-stone-900 text-sm block">Device Push Alerts</span>
+            <span className="text-[10px] text-stone-600 font-bold block leading-tight">
+              Get notified immediately when new board notices or events are posted
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={requestNotificationPermission}
+          className={`px-3 py-1.5 text-xs font-black uppercase rounded-sm border-2 border-stone-900 cursor-pointer transition-colors shadow-sm ${
+            notificationPermission === 'granted'
+              ? 'bg-forest text-canvas border-forest'
+              : 'bg-stone-100 text-stone-800 hover:bg-stone-200'
+          }`}
+        >
+          {notificationPermission === 'granted' ? 'Alerts Enabled' : 'Enable Alerts'}
+        </button>
+      </div>
+
+      {/* Admin Action Switchers */}
       {currentUser.role === 'ADMIN' && (
-        <div className="bg-stone-200 trail-border rounded-sm overflow-hidden flex flex-col">
+        <div className="bg-stone-200 trail-border trail-shadow rounded-sm overflow-hidden flex flex-col">
           {/* Quick User Management Directory Switcher */}
           <div className="bg-stone-900 text-canvas p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-stone-800">
             <div>
@@ -261,19 +407,19 @@ export default function ProfilePage({
             className="w-full flex items-center justify-between p-3.5 cursor-pointer hover:bg-stone-300/40 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-stone-600 shrink-0" />
-              <span className="text-xs uppercase font-black text-stone-700 tracking-wider">
+              <Eye className="w-4 h-4 text-stone-700 shrink-0" />
+              <span className="text-xs uppercase font-black text-stone-800 tracking-wider">
                 Simulate Custom Role Preview Clearances
               </span>
             </div>
-            <ChevronDown className={`w-4 h-4 text-stone-600 transition-transform duration-200 ${showRolePreview ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-stone-700 transition-transform duration-200 ${showRolePreview ? 'rotate-180' : ''}`} />
           </button>
           
           {showRolePreview && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 pb-4 bg-stone-200">
               <button
                 onClick={() => setRole('COMMUNITY_MEMBER')}
-                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm ${
+                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm truncate ${
                   role === 'COMMUNITY_MEMBER' || role === 'MEMBER'
                     ? 'bg-forest text-canvas border-forest shadow-sm'
                     : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
@@ -283,7 +429,7 @@ export default function ProfilePage({
               </button>
               <button
                 onClick={() => setRole('CORE_MEMBER')}
-                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm ${
+                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm truncate ${
                   role === 'CORE_MEMBER'
                     ? 'bg-forest text-canvas border-forest shadow-sm'
                     : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
@@ -293,7 +439,7 @@ export default function ProfilePage({
               </button>
               <button
                 onClick={() => setRole('VOLUNTEER')}
-                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm ${
+                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm truncate ${
                   role === 'VOLUNTEER'
                     ? 'bg-forest text-canvas border-forest shadow-sm'
                     : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
@@ -303,7 +449,7 @@ export default function ProfilePage({
               </button>
               <button
                 onClick={() => setRole('ADMIN')}
-                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm ${
+                className={`text-[10px] text-center py-2 font-black uppercase transition-all border rounded-sm truncate ${
                   role === 'ADMIN'
                     ? 'bg-campfire text-canvas border-campfire shadow-sm'
                     : 'bg-canvas text-stone-600 border-stone-300 hover:bg-stone-50'
@@ -316,11 +462,11 @@ export default function ProfilePage({
         </div>
       )}
 
-      {/* Accordion List: TOS + Waiver + Delete Account */}
+      {/* Accordions: TOS & Waiver */}
       <div className="flex flex-col gap-4">
         
         {/* Terms of Service Accordion */}
-        <div className="bg-[#EAE6DF] trail-border rounded-sm overflow-hidden">
+        <div className="bg-[#EAE6DF] trail-border trail-shadow rounded-sm overflow-hidden">
           <button
             onClick={() => setShowTOS(!showTOS)}
             className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-stone-200/50 transition-colors"
@@ -335,7 +481,7 @@ export default function ProfilePage({
           </button>
 
           {showTOS && (
-            <div className="px-4 pb-4 border-t border-stone-300 pt-3">
+            <div className="px-4 pb-4 border-t border-stone-350 pt-3">
               <div className="max-h-[180px] overflow-y-auto text-xs text-stone-700 leading-relaxed pr-2 font-medium bg-canvas/30 p-3 rounded-sm border border-stone-300">
                 <p className="font-bold mb-2 uppercase text-forest">1. BROTHERHOOD PROTOCOL</p>
                 <p className="mb-3">
@@ -355,7 +501,7 @@ export default function ProfilePage({
         </div>
 
         {/* Waiver Consent Framework Accordion */}
-        <div className="bg-[#EAE6DF] trail-border rounded-sm overflow-hidden">
+        <div className="bg-[#EAE6DF] trail-border trail-shadow rounded-sm overflow-hidden">
           <button
             onClick={() => setShowWaiver(!showWaiver)}
             className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-stone-200/50 transition-colors"
@@ -370,7 +516,7 @@ export default function ProfilePage({
           </button>
 
           {showWaiver && (
-            <div className="px-4 pb-4 border-t border-stone-300 pt-3 flex flex-col gap-3">
+            <div className="px-4 pb-4 border-t border-stone-350 pt-3 flex flex-col gap-3">
               <div className="text-xs text-stone-700 leading-relaxed font-semibold bg-canvas/30 p-3 rounded-sm border border-stone-300">
                 <p className="mb-2">
                   This framework accommodates liability agreements and waiver signatures required for outdoor expeditions (swimming, kayaking, archery).
@@ -398,48 +544,12 @@ export default function ProfilePage({
           )}
         </div>
 
-        {/* Delete Account Accordion (Apple App Store Requirement) */}
-        <div className="bg-red-50/50 border-2 border-red-900/30 rounded-sm overflow-hidden">
-          <button
-            onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
-            className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-red-50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-700 shrink-0" />
-              <span className="text-xs sm:text-sm font-display font-extrabold uppercase text-red-900">
-                Delete Account (Apple Requirements)
-              </span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-red-700 transition-transform duration-200 ${showDeleteConfirm ? 'rotate-180' : ''}`} />
-          </button>
-
-          {showDeleteConfirm && (
-            <div className="px-4 pb-4 border-t border-red-900/20 pt-3">
-              <p className="text-xs text-red-950 font-bold leading-relaxed mb-3">
-                Deleting your account will permanently wipe your profile record, merit badges, and self-attested growth ledger. This action is compliance-required and cannot be undone.
-              </p>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm("Are you absolutely sure you want to permanently delete your School of Life account? This will log you out immediately and purge your records.")) {
-                    handleDelete();
-                  }
-                }}
-                className="bg-red-700 text-canvas px-4 py-2 text-xs font-black uppercase rounded-sm hover:bg-red-800 transition-colors cursor-pointer border border-red-900 trail-shadow-sm active:translate-y-[1px] active:shadow-none"
-              >
-                Permanently Delete Account
-              </button>
-            </div>
-          )}
-        </div>
-
       </div>
 
       {/* Logout Button */}
       <button
         onClick={onLogout}
-        className="flex items-center justify-center gap-2 w-full bg-stone-900 text-canvas py-3 font-display font-black uppercase tracking-wider trail-border trail-shadow hover:bg-campfire hover:text-canvas transition-colors cursor-pointer rounded-sm mt-4"
+        className="flex items-center justify-center gap-2 w-full bg-stone-900 text-canvas py-3.5 font-display font-black uppercase tracking-wider trail-border trail-shadow hover:bg-campfire hover:text-canvas transition-colors cursor-pointer rounded-sm mt-4"
       >
         <LogOut className="w-5 h-5" /> Log Out / Terminate Session
       </button>

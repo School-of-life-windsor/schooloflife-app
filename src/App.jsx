@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import NoticeBoard from './components/NoticeBoard';
 import ExpeditionMap from './components/ExpeditionMap';
@@ -86,6 +86,51 @@ export default function App() {
   const [membersList, setMembersList] = useState([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSplashFadingOut, setIsSplashFadingOut] = useState(false);
+
+  // Local Notifications Engine
+  const prevAnnouncementsCount = useRef(0);
+  const prevEventsCount = useRef(0);
+
+  const triggerLocalNotification = (title, body) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/favicon.svg'
+      });
+    }
+  };
+
+  // Track announcements count to detect new additions
+  useEffect(() => {
+    if (!isInitializing && announcements.length > 0) {
+      if (announcements.length > prevAnnouncementsCount.current) {
+        const latest = announcements[0]; // sorted newest first
+        if (latest && latest.author_id !== currentUser?.id) {
+          triggerLocalNotification(
+            "School of Life Notice Board",
+            `New notice by ${latest.author_name || 'Admin'}: ${latest.title}`
+          );
+        }
+      }
+    }
+    prevAnnouncementsCount.current = announcements.length;
+  }, [announcements, isInitializing, currentUser]);
+
+  // Track events count to detect new additions
+  useEffect(() => {
+    if (!isInitializing && events.length > 0) {
+      if (events.length > prevEventsCount.current) {
+        const latest = events[events.length - 1]; // sorted oldest to newest (ascending)
+        if (latest) {
+          triggerLocalNotification(
+            "School of Life Event Posted",
+            `New expedition event: ${latest.title} on ${latest.date}`
+          );
+        }
+      }
+    }
+    prevEventsCount.current = events.length;
+  }, [events, isInitializing]);
 
   // Fetch announcements, events, and profiles from Supabase/LocalStorage
   const loadDatabase = async () => {
@@ -333,6 +378,19 @@ export default function App() {
     try {
       const userId = currentUser.id || currentUser.memberId;
       if (isConfigured) {
+        // If password reset is requested, execute auth update first
+        if (updatedFields.password) {
+          const { error: authErr } = await supabase.auth.updateUser({ password: updatedFields.password });
+          if (authErr) throw authErr;
+          delete updatedFields.password; // Do not write password to database profiles table!
+        }
+        
+        // If email reset is requested, execute auth update first
+        if (updatedFields.email && updatedFields.email !== currentUser.email) {
+          const { error: authErr } = await supabase.auth.updateUser({ email: updatedFields.email });
+          if (authErr) throw authErr;
+        }
+
         const { data, error } = await supabase
           .from('profiles')
           .update(updatedFields)
@@ -343,18 +401,23 @@ export default function App() {
         if (error) throw error;
         setCurrentUser(data);
       } else {
-        const updatedUser = { ...currentUser, ...updatedFields };
+        const payload = { ...updatedFields };
+        if (payload.password) {
+          delete payload.password; // Clean mock password
+        }
+
+        const updatedUser = { ...currentUser, ...payload };
         localStorage.setItem('sol_session', JSON.stringify(updatedUser));
         
         const localUsers = JSON.parse(localStorage.getItem('sol_users') || '[]');
         const updatedUsers = localUsers.map((u) => 
-          (u.id === userId || u.memberId === userId) ? { ...u, ...updatedFields } : u
+          (u.id === userId || u.memberId === userId) ? { ...u, ...payload } : u
         );
         localStorage.setItem('sol_users', JSON.stringify(updatedUsers));
         
         setCurrentUser(updatedUser);
         setMembersList(membersList.map((m) =>
-          (m.id === userId || m.memberId === userId) ? { ...m, ...updatedFields } : m
+          (m.id === userId || m.memberId === userId) ? { ...m, ...payload } : m
         ));
       }
     } catch (err) {
@@ -678,43 +741,10 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Content Workspace */}
-      <main className="flex-1 p-2 md:p-8 lg:p-12 overflow-y-auto pb-16 lg:pb-12">
+      {/* Main Content Workspace — pb-24 on mobile to clear the new floating tab bar pill */}
+      <main className="flex-1 p-2 md:p-8 lg:p-12 overflow-y-auto pb-24 lg:pb-12">
         
         <div className="w-full">
-          {/* Header Ribbon for Active Role — compact on mobile */}
-          <div className="mb-2 md:mb-6 flex items-center justify-between gap-2 bg-stone-100 p-1.5 md:p-4 border-2 border-stone-900 rounded-sm">
-            <div className="flex items-center gap-2 text-stone-800 min-w-0">
-              <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-forest rounded-full animate-pulse shrink-0"></span>
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-wider truncate">
-                {
-                  role === 'ADMIN' ? 'Admin' :
-                  role === 'VOLUNTEER' ? 'Volunteer' :
-                  role === 'CORE_MEMBER' ? 'Core' : 'Member'
-                }
-              </span>
-            </div>
-
-            <div className="hidden lg:flex items-center gap-2">
-              {currentUser.role === 'ADMIN' && (
-                <>
-                  <span className="text-[10px] uppercase font-bold text-stone-500">Quick Switcher:</span>
-                  <button
-                    onClick={() => {
-                      const rolesCycle = ['COMMUNITY_MEMBER', 'CORE_MEMBER', 'VOLUNTEER', 'ADMIN'];
-                      const idx = rolesCycle.indexOf(role);
-                      const nextRole = rolesCycle[(idx + 1) % rolesCycle.length];
-                      setRole(nextRole);
-                    }}
-                    className="px-2.5 py-1 text-[10px] font-black uppercase bg-stone-900 text-canvas rounded-sm hover:bg-campfire transition-colors cursor-pointer border border-stone-800"
-                  >
-                    Cycle Role preview
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
           {/* Active View Panel */}
           <div className="w-full font-sans">
             {renderContent()}
