@@ -125,9 +125,9 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* iOS-Native Tab Bar (Mobile Viewport)                  */}
+      {/* Floating Pill Tab Bar (Mobile Viewport)                 */}
       {/* ═══════════════════════════════════════════════════════ */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 ios-tab-bar px-2 pt-1.5 flex items-start justify-around z-50">
+      <div className="lg:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-4 right-4 max-w-md mx-auto ios-tab-bar-pill flex items-center justify-around z-50">
         {mobileMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeView === item.id;
@@ -136,14 +136,14 @@ export default function Sidebar({ activeView, setActiveView, role, setRole, user
               key={item.id}
               id={`nav-mobile-${item.id.toLowerCase()}`}
               onClick={() => handleNavClick(item.id)}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 min-w-[56px] transition-colors duration-150 ${
+              className={`flex flex-col items-center justify-center gap-0.5 py-1 min-w-[48px] min-h-[48px] transition-all duration-150 rounded-full cursor-pointer ${
                 isActive
-                  ? 'text-forest'
-                  : 'text-stone-400 active:text-stone-600'
+                  ? 'text-forest scale-105'
+                  : 'text-stone-500 active:text-stone-850'
               }`}
             >
-              <Icon className="w-[22px] h-[22px]" strokeWidth={isActive ? 2.2 : 1.8} />
-              <span className={`text-[10px] leading-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+              <Icon className="w-[20px] h-[20px]" strokeWidth={isActive ? 2.2 : 1.8} />
+              <span className={`text-[9px] tracking-tight leading-none ${isActive ? 'font-black' : 'font-semibold'}`}>
                 {item.shortLabel}
               </span>
             </button>

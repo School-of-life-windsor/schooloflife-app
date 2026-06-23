@@ -130,6 +130,18 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* ─── Floating Pill Tab Bar ─── */
+.ios-tab-bar-pill {
+  background: rgba(244, 241, 234, 0.94);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 2px solid #1C1917; /* trail-border style */
+  box-shadow: 4px 4px 0px 0px #1C1917; /* trail-shadow style */
+  height: 58px;
+  border-radius: 9999px;
+  padding: 0 8px;
+}
+
 /* ─── Mobile header safe-area extension ─── */
 .mobile-header-safe {
   padding-top: env(safe-area-inset-top, 0px);
