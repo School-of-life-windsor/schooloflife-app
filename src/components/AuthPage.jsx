@@ -462,7 +462,7 @@ export default function AuthPage({ onLoginSuccess }) {
       {/* Brand Header */}
       <div className="flex flex-col items-center gap-2 mb-8 text-center">
         <div className="w-18 h-18 bg-canvas trail-border trail-shadow rounded-full flex items-center justify-center overflow-hidden">
-          <img src="/favicon.svg" alt="School of Life Logo" className="w-full h-full object-cover" />
+          <img src="/logo.png" alt="School of Life Logo" className="w-full h-full object-cover" />
         </div>
         <h1 className="font-display font-black text-3xl text-forest uppercase tracking-wider mt-2">
           SCHOOL OF LIFE

@@ -23,7 +23,7 @@ export default function SplashScreen({ fadingOut }) {
           {/* Inner Circle background */}
           <div className="w-18 h-18 bg-[#1a231b] border-2 border-[#c4782c] rounded-full flex items-center justify-center shadow-lg relative overflow-hidden">
             <img 
-              src="/favicon.svg" 
+              src="/logo.png" 
               alt="School of Life Logo" 
               className="w-full h-full object-cover p-2 opacity-90"
               onError={(e) => {
