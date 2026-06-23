@@ -7,6 +7,8 @@ import UserManagement from './components/UserManagement';
 import AuthPage from './components/AuthPage';
 import SplashScreen from './components/SplashScreen';
 import { supabase, isConfigured } from './lib/supabaseClient';
+import MapPage from './components/MapPage';
+import ProfilePage from './components/ProfilePage';
 
 const initialMembersList = [];
 
@@ -326,6 +328,41 @@ export default function App() {
     }
   };
 
+  // Update profile details
+  const handleUpdateCurrentUser = async (updatedFields) => {
+    try {
+      const userId = currentUser.id || currentUser.memberId;
+      if (isConfigured) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .update(updatedFields)
+          .eq('id', userId)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setCurrentUser(data);
+      } else {
+        const updatedUser = { ...currentUser, ...updatedFields };
+        localStorage.setItem('sol_session', JSON.stringify(updatedUser));
+        
+        const localUsers = JSON.parse(localStorage.getItem('sol_users') || '[]');
+        const updatedUsers = localUsers.map((u) => 
+          (u.id === userId || u.memberId === userId) ? { ...u, ...updatedFields } : u
+        );
+        localStorage.setItem('sol_users', JSON.stringify(updatedUsers));
+        
+        setCurrentUser(updatedUser);
+        setMembersList(membersList.map((m) =>
+          (m.id === userId || m.memberId === userId) ? { ...m, ...updatedFields } : m
+        ));
+      }
+    } catch (err) {
+      console.error('Update profile error:', err);
+      throw err;
+    }
+  };
+
   const handleUpdateAnnouncements = async (newAnnouncements) => {
     if (newAnnouncements.length > announcements.length) {
       const latest = newAnnouncements[0];
@@ -567,6 +604,25 @@ export default function App() {
             onDeleteAccount={handleDeleteAccount}
           />
         );
+      case 'Map':
+        return (
+          <MapPage
+            role={role}
+            currentUser={currentUser}
+          />
+        );
+      case 'Profile':
+        return (
+          <ProfilePage
+            role={role}
+            setRole={setRole}
+            currentUser={currentUser}
+            onUpdateCurrentUser={handleUpdateCurrentUser}
+            onDeleteAccount={handleDeleteAccount}
+            onLogout={handleLogout}
+            setActiveView={setActiveView}
+          />
+        );
       case 'UserManagement':
         return role === 'ADMIN' ? (
           <UserManagement
@@ -623,11 +679,11 @@ export default function App() {
       />
 
       {/* Main Content Workspace */}
-      <main className="flex-1 p-3 md:p-8 lg:p-12 overflow-y-auto pb-18 lg:pb-12">
+      <main className="flex-1 p-2 md:p-8 lg:p-12 overflow-y-auto pb-16 lg:pb-12">
         
         <div className="w-full">
           {/* Header Ribbon for Active Role — compact on mobile */}
-          <div className="mb-3 md:mb-6 flex items-center justify-between gap-2 bg-stone-100 p-2 md:p-4 border-2 border-stone-900 rounded-sm">
+          <div className="mb-2 md:mb-6 flex items-center justify-between gap-2 bg-stone-100 p-1.5 md:p-4 border-2 border-stone-900 rounded-sm">
             <div className="flex items-center gap-2 text-stone-800 min-w-0">
               <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-forest rounded-full animate-pulse shrink-0"></span>
               <span className="text-[10px] md:text-xs font-black uppercase tracking-wider truncate">
